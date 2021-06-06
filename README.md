@@ -1,11 +1,6 @@
 # NAME
 	lamp_virtual_host - create or delete an apache virtual host with database mysql
 
-# SYNOPSIS
-`cd /path/to/your/directory/websites`
-
-`lamp_virtual_host www.example.com/`
-
 # DESCRIPTION
 lamp_virtual_host is a simple bash script for debian machines that create or delete an apache virtual host
 	
@@ -15,6 +10,13 @@ It's possible create or delete a database mysql and choose a different php-fpm v
 `sudo mv lamp_virtual_host /usr/bin`
 
 `sudo chmod +x /usr/bin/lamp_virtual_host`
+
+# USAGE
+## Create the virtual host
+![create](./demo-create-host.gif)
+
+## Delete the virtual host
+![delete](./demo-delete-host.gif)
 
 # REQUIREMENTS
 - A debian linux distribution like Ubuntu
