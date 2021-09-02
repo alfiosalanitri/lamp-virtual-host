@@ -136,7 +136,7 @@ select action in "${actions[@]}"; do
 			read -p "Type the database user: " database_user
 			database_user=${database_user}
 			
-			read -p "Type the database password: " database_password
+			read -sp "Type the database password: " database_password
 			database_password=${database_password}
 			
 			sql="create database if not exists $database_name"
