@@ -326,7 +326,9 @@ done
 
 #set the directory permissions
 sudo chown -R www-data:www-data $path
-sudo chmod -R g+w $path
+sudo find ${path}public_html -type d -exec chmod 755 {} \;
+sudo find ${path}public_html -type f -exec chmod 644 {} \;
+sudo chmod -R g+w ${path}public_html
 printf "[${green}${icon_ok}${nocolor}] Permissions setted!\n"
 
 #create the symbolic link to www
