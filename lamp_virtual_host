@@ -19,7 +19,7 @@
 #	- A debian linux distribution like Ubuntu
 #	- Stack Lamp: Apache, Mysql (optional), Php
 #	- php-fpm module (optional)
-#	- mkcert for ssl certificate
+#	- mkcert for ssl certificate (optional)
 #	
 # AUTHOR: 
 #	lamp_virtual_host is written by Alfio Salanitri <www.alfiosalanitri.it> and are licensed under the terms of the GNU General Public License, version 2 or higher.
@@ -50,11 +50,6 @@ fi
 # Check php
 if [ -z "$(ls -A "/etc/php")" ]; then
 	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}/etc/php${nocolor} is required.\n"
-	exit 1;
-fi
-# Check mkcert
-if ! command -v mkcert &> /dev/null; then
-	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}mkcert${nocolor} is required. Install it with brew --> https://docs.brew.sh/Homebrew-on-Linux!\n"
 	exit 1;
 fi
 
@@ -130,13 +125,13 @@ select action in "${actions[@]}"; do
 			fi
 
 			#ok mysql is installed
-            read -p "Type the database name: " database_name
+            		read -p "Type the database name: " database_name
 			database_name=${database_name}
 
 			read -p "Type the database user: " database_user
 			database_user=${database_user}
 			
-			read -p "Type the database password: " database_password
+			read -sp "Type the database password: " database_password
 			database_password=${database_password}
 			
 			sql="create database if not exists $database_name"
@@ -289,19 +284,51 @@ if [ -z "$(ls -A "${path}public_html")" ]; then
 	exit 1;
 fi
 
-# check if ssl mod is enabled
-if [ ! -f "/etc/apache2/mods-enabled/ssl.load" ]; then
-   printf "[${red}${icon_ko}${nocolor}] Enable SSL on Apache2 with ${green}sudo a2enmod ssl\n"
-   exit 1;
-fi
+#############################################################
+# SSL certificate
+#############################################################
+echo ""
+echo "*************************"
+echo "* 4. SSL CERTIFICATE"
+echo "*************************"
+echo ""
+sudo printf "${yellow}${icon_wait}${nocolor} Do you want to add an SSL Certificate with mkcert (local development only) to ${green}$domain${nocolor}?\n"
+echo ""
+ssl_support=''
+PS3="Type 1 or 2: "
+actions=("yes" "no")
+select action in "${actions[@]}"; do
+    case $action in
+        "yes")
+		# Check mkcert
+		if ! command -v mkcert &> /dev/null; then
+			printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}mkcert${nocolor} is required. Install it with brew --> https://docs.brew.sh/Homebrew-on-Linux!\n"
+			exit 1;
+		fi
 
-#create the ssl certificate
-mkcert $domain > /dev/null 2>&1
-printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
+		# check if ssl mod is enabled
+		if [ ! -f "/etc/apache2/mods-enabled/ssl.load" ]; then
+ 			printf "[${red}${icon_ko}${nocolor}] Enable SSL on Apache2 with ${green}sudo a2enmod ssl\n"
+   			exit 1;
+		fi
+
+		#create the ssl certificate
+		mkcert $domain > /dev/null 2>&1
+		printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
+
+            	ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
+		break;;
+        "no")
+		break;;
+        *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n";;
+    esac
+done
 
 #set the directory permissions
 sudo chown -R www-data:www-data $path
-sudo chmod -R g+w $path
+sudo find ${path}public_html -type d -exec chmod 755 {} \;
+sudo find ${path}public_html -type f -exec chmod 644 {} \;
+sudo chmod -R g+w ${path}public_html
 printf "[${green}${icon_ok}${nocolor}] Permissions setted!\n"
 
 #create the symbolic link to www
@@ -313,7 +340,7 @@ sudo touch /etc/apache2/sites-available/$domain.conf
 printf "[${green}${icon_ok}${nocolor}] Apache config file created with success!\n"
 
 #create the virtual host apache file
-sudo sh -c "echo '<VirtualHost *:80>\n\nServerName $domain\nServerAlias $domain\nServerAdmin webmaster@localhost\nSetEnv PATH \"/var/www/$domain/public_html\"\nDocumentRoot /var/www/$domain/public_html\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\n$fastcgi</VirtualHost>\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>' >> /etc/apache2/sites-available/$domain.conf"
+sudo sh -c "echo '<VirtualHost *:80>\n\nServerName $domain\nServerAlias $domain\nServerAdmin webmaster@localhost\nSetEnv PATH \"/var/www/$domain/public_html\"\nDocumentRoot /var/www/$domain/public_html\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\n$fastcgi</VirtualHost>$ssl_support' >> /etc/apache2/sites-available/$domain.conf"
 printf "[${green}${icon_ok}${nocolor}] Virtual host created! For extra options, edit this file: /etc/apache2/sites-enabled/$domain.conf\n"
 
 #Enable the site
@@ -328,6 +355,6 @@ sudo sh -c "echo '127.0.0.1	$domain' >> /etc/hosts"
 printf "[${green}${icon_ok}${nocolor}] Website added to /etc/hosts!\n\n\n"
 	
 #print the final message
-printf "[${green}${icon_rocket}${nocolor}] The Force will be with you. Always. Virtual host created: https://$domain\n"
+printf "[${green}${icon_rocket}${nocolor}] The Force will be with you. Always. Virtual host created: $domain\n"
 
 exit 1;

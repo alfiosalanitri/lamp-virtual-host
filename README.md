@@ -22,7 +22,7 @@ It's possible create or delete a database mysql and choose a different php-fpm v
 - A debian linux distribution like Ubuntu
 - Stack Lamp: Apache, Mysql (optional), Php
 - php-fpm module (optional)
-- mkcert for ssl certificate
+- mkcert for ssl certificate (optional)
        
 # AUTHOR: 
 lamp_virtual_host is written by Alfio Salanitri www.alfiosalanitri.it and are licensed under the terms of the GNU General Public License, version 2 or higher. 
