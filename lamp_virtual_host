@@ -348,7 +348,7 @@ select action in "${actions[@]}"; do
 			mkcert $domain > /dev/null 2>&1
             		ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
 		else
-			sudo certbot certonly --cert-name $domain
+			sudo certbot certonly --cert-name $domain -d $domain --pre-hook "service apache stop" --post-hook "service apache start"
 			ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
 	
 		fi
