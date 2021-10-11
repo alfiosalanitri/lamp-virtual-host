@@ -12,14 +12,14 @@
 #	It's possible create or delete a database mysql and choose a different php-fpm version
 #
 # INSTALLATION
-#	sudo mv lamp_virtual_host /usr/local/bin
-#	sudo chmod +x /usr/local/bin/lamp_virtual_host
+#	sudo mv lamp_virtual_host /usr/bin
+#	sudo chmod +x /usr/bin/lamp_virtual_host
 #
 # REQUIREMENTS
 #	- A debian linux distribution like Ubuntu
 #	- Stack Lamp: Apache, Mysql (optional), Php
 #	- php-fpm module (optional)
-#	- mkcert for ssl certificate (optional)
+#	- mkcert for ssl certificate
 #	
 # AUTHOR: 
 #	lamp_virtual_host is written by Alfio Salanitri <www.alfiosalanitri.it> and are licensed under the terms of the GNU General Public License, version 2 or higher.
@@ -67,6 +67,9 @@ domain=$(basename "$1")
 #full path of domain
 path="$(pwd)/"$1
 
+#environment type
+environment_type=""
+
 #action type
 action_type=""
 
@@ -77,13 +80,36 @@ fastcgimodule="";
 #############################################################
 # User choises												#
 #############################################################
+echo ""
+echo "***************************"
+echo "* 1. ENVIRONMENT TYPE"
+echo "***************************"
+echo ""
+sudo printf "${yellow}${icon_wait}${nocolor} Choose the environment type for ${green}$domain${nocolor}\n"
+echo ""
+PS3="Type 1 or 2: "
+actions=("development" "production")
+select action in "${actions[@]}"; do
+    case $action in
+        "development")
+		printf "[${green}${icon_ok}${nocolor}] Good, I will create the ssl certificate with certbot.\n"
+            	environment_type=$action
+		break;;
+        "production")
+		printf "[${green}${icon_ok}${nocolor}] Make sure you have added the domain dns that point to this server.\n"
+		environment_type=$action
+		break;;
+        *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n";;
+    esac
+done
+
 # create/delete domain
 echo ""
 echo "***************************"
-echo "* 1. VIRTUAL HOST"
+echo "* 2. VIRTUAL HOST"
 echo "***************************"
 echo ""
-sudo printf "${yellow}${icon_wait}${nocolor} Do you want to CREATE or DELETE the virtual host ${green}$domain${nocolor}?\n"
+printf "${yellow}${icon_wait}${nocolor} Do you want to CREATE or DELETE the virtual host ${green}$domain${nocolor}?\n"
 echo ""
 PS3="Type 1 or 2: "
 actions=("create" "delete")
@@ -108,7 +134,7 @@ printf "[${green}${icon_ok}${nocolor}] Good, I will to ${green}$action_type${noc
 
 # create/delete database
 echo "***************************"
-echo "* 2. DATABASE"
+echo "* 3. DATABASE"
 echo "***************************"
 echo ""
 printf "${yellow}${icon_wait}${nocolor} Do you want to ${green}$action_type${nocolor} the database?\n"
@@ -211,7 +237,7 @@ fi
 # Create the virtual host			#
 #################################################
 echo "***************************"
-echo "* 3. PHP-FPM"
+echo "* 4. PHP-FPM"
 echo "***************************"
 echo ""
 PS3="Do you want to use PHP-FPM (FastCGI Process Manager)?: "
@@ -285,14 +311,14 @@ if [ -z "$(ls -A "${path}public_html")" ]; then
 fi
 
 #############################################################
-# SSL certificate
+# SSl certificats
 #############################################################
 echo ""
 echo "*************************"
-echo "* 4. SSL CERTIFICATE"
+echo "* 5. SSL CERTIFICATE"
 echo "*************************"
 echo ""
-sudo printf "${yellow}${icon_wait}${nocolor} Do you want to add an SSL Certificate with mkcert (local development only) to ${green}$domain${nocolor}?\n"
+sudo printf "${yellow}${icon_wait}${nocolor} Do you want to add an SSL Certificate to ${green}$domain${nocolor}?\n"
 echo ""
 ssl_support=''
 PS3="Type 1 or 2: "
@@ -300,9 +326,14 @@ actions=("yes" "no")
 select action in "${actions[@]}"; do
     case $action in
         "yes")
-		# Check mkcert
-		if ! command -v mkcert &> /dev/null; then
-			printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}mkcert${nocolor} is required. Install it with brew --> https://docs.brew.sh/Homebrew-on-Linux!\n"
+		# Check package dependencies
+		cert_package="mkcert"
+		if [ "production" == "$environment_type" ]; then
+			cert_package="certbot"
+		fi
+
+		if ! command -v $cert_package &> /dev/null; then
+			printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}$cert_package${nocolor} is required. Install it before!\n"
 			exit 1;
 		fi
 
@@ -313,10 +344,17 @@ select action in "${actions[@]}"; do
 		fi
 
 		#create the ssl certificate
-		mkcert $domain > /dev/null 2>&1
+		if [ "development" == "$environment_type" ]; then
+			mkcert $domain > /dev/null 2>&1
+            		ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
+		else
+			sudo certbot certonly --cert-name $domain
+			ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
+	
+		fi
 		printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
 
-            	ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
+
 		break;;
         "no")
 		break;;
@@ -326,9 +364,7 @@ done
 
 #set the directory permissions
 sudo chown -R www-data:www-data $path
-sudo find ${path}public_html -type d -exec chmod 755 {} \;
-sudo find ${path}public_html -type f -exec chmod 644 {} \;
-sudo chmod -R g+w ${path}public_html
+sudo chmod -R g+w $path
 printf "[${green}${icon_ok}${nocolor}] Permissions setted!\n"
 
 #create the symbolic link to www
