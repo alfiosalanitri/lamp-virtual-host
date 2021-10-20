@@ -1,14 +1,14 @@
 #!/bin/bash
 #
 # NAME
-# 	lamp_virtual_host - create or delete an apache virtual host with database mysql
+# lamp_virtual_host - create or delete an apache virtual host with database mysql
 #
 # SYNOPSIS
 #	lamp_virtual_host www.example.com/
 #
 # DESCRIPTION
 #	lamp_virtual_host is a simple bash script for debian machines that create or delete an apache virtual host
-#	
+#
 #	It's possible create or delete a database mysql and choose a different php-fpm version
 #
 # INSTALLATION
@@ -20,15 +20,15 @@
 #	- Stack Lamp: Apache, Mysql (optional), Php
 #	- php-fpm module (optional)
 #	- mkcert for ssl certificate
-#	
-# AUTHOR: 
+#
+# AUTHOR:
 #	lamp_virtual_host is written by Alfio Salanitri <www.alfiosalanitri.it> and are licensed under the terms of the GNU General Public License, version 2 or higher.
-# 
-# 
+#
+#
 #############################################################
-# Icons	and color	
+# Icons	and color
 # https://www.techpaste.com/2012/11/print-colored-text-background-shell-script-linux/
-# https://apps.timwhitlock.info/emoji/tables/unicode	
+# https://apps.timwhitlock.info/emoji/tables/unicode
 #############################################################
 red='\033[0;31m'
 green='\033[0;32m'
@@ -45,12 +45,12 @@ icon_rocket='\xF0\x9F\x9A\x80'
 # Check Apache
 if [ ! -d /etc/apache2 ]; then
   printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}/etc/apache2${nocolor} is required.\n"
-	exit 1;
+  exit 1
 fi
 # Check php
 if [ -z "$(ls -A "/etc/php")" ]; then
-	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}/etc/php${nocolor} is required.\n"
-	exit 1;
+  printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}/etc/php${nocolor} is required.\n"
+  exit 1
 fi
 
 #############################################################
@@ -58,7 +58,7 @@ fi
 #############################################################
 if [ ! -d "$1" ]; then
   printf "[${red}${icon_ko}${nocolor}] Type the directory that include your website (with final slash). ${red}N.B.${nocolor} rename the directory with website domain. Example: www.example.com\n"
-  exit 1;
+  exit 1
 fi
 
 #domain name that is used for virtual host
@@ -75,7 +75,7 @@ action_type=""
 
 #php fast cgi
 fastcgi=""
-fastcgimodule="";
+fastcgimodule=""
 
 #############################################################
 # User choises
@@ -91,15 +91,17 @@ PS3="Type 1 or 2: "
 actions=("development" "production")
 select action in "${actions[@]}"; do
   case $action in
-    "development")
-      printf "[${green}${icon_ok}${nocolor}] Good, I will create the ssl certificate with certbot.\n"
-      environment_type=$action
-      break;;
-    "production")
-		  printf "[${green}${icon_ok}${nocolor}] Make sure you have added the domain dns that point to this server.\n"
-		  environment_type=$action
-		  break;;
-    *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n";;
+  "development")
+    printf "[${green}${icon_ok}${nocolor}] Good, I will create the ssl certificate with certbot.\n"
+    environment_type=$action
+    break
+    ;;
+  "production")
+    printf "[${green}${icon_ok}${nocolor}] Make sure you have added the domain dns that point to this server.\n"
+    environment_type=$action
+    break
+    ;;
+  *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
   esac
 done
 
@@ -115,18 +117,20 @@ PS3="Type 1 or 2: "
 actions=("create" "delete")
 select action in "${actions[@]}"; do
   case $action in
-    "create")
-      #check if exists the virtual host
-      if [ -d /var/www/"$domain" ]; then
-        printf "[${red}${icon_ko}${nocolor}] Sorry, but this virtual host already exists.\n"
-       	exit 1;
-      fi
-      action_type=$action
-      break;;
-    "delete")
-      action_type=$action
-      break;;
-    *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n";;
+  "create")
+    #check if exists the virtual host
+    if [ -d /var/www/"$domain" ]; then
+      printf "[${red}${icon_ko}${nocolor}] Sorry, but this virtual host already exists.\n"
+      exit 1
+    fi
+    action_type=$action
+    break
+    ;;
+  "delete")
+    action_type=$action
+    break
+    ;;
+  *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
   esac
 done
 printf "[${green}${icon_ok}${nocolor}] Good, I will to ${green}$action_type${nocolor} the virtual host. Now...\n"
@@ -138,104 +142,105 @@ echo "***************************"
 echo ""
 printf "${yellow}${icon_wait}${nocolor} Do you want to ${green}$action_type${nocolor} the database?\n"
 echo ""
-S3="Type 1 or 2: "
+PS3="Type 1 or 2: "
 actions=("Yes" "No")
 select action in "${actions[@]}"; do
   case $action in
-    "Yes")
-      # Check if exists
-			if ! command -v mysql &> /dev/null; then
-				printf "${red}${icon_ko}${nocolor} Sorry, but ${green}mysql${nocolor} is required.\n"
-				exit 1;
-			fi
+  "Yes")
+    # Check if exists
+    if ! command -v mysql &>/dev/null; then
+      printf "${red}${icon_ko}${nocolor} Sorry, but ${green}mysql${nocolor} is required.\n"
+      exit 1
+    fi
 
-			#ok mysql is installed
-      read -p "Type the database name: " database_name
-			database_name=${database_name}
+    #ok mysql is installed
+    read -p "Type the database name: " database_name
+    database_name=${database_name}
 
-			read -p "Type the database user: " database_user
-			database_user=${database_user}
-			
-			read -sp "Type the database password: " database_password
-			database_password=${database_password}
-			
-			sql="create database if not exists $database_name"
-			if [ "$action_type" == "delete" ]; then
-        sql="drop database $database_name;"
-			fi
-			
-			printf "\nMysql log start: ----------------------------------------------------------------\n"	
-			#create/delete the database
-			if ! mysql -u$database_user -p$database_password  -e "$sql"; then
-        printf "Mysql log end: ----------------------------------------------------------\n"
-				printf "[${red}${icon_ko}${nocolor}] Database errors. Solve this log errors messages.\n"
-				exit 1;
-			fi
+    read -p "Type the database user: " database_user
+    database_user=${database_user}
 
-			#check if the database exists
-			database_check=$(mysql -u$database_user -p$database_password -e "SHOW DATABASES" | grep -Fo $database_name)
-			printf "Mysql log end: ------------------------------------------------------------------\n"
-			if [ "$action_type" == "delete" ]; then
-				if [ "$database_check" != "$database_name" ]; then
-    				printf "[${green}${icon_ok}${nocolor}] Good, database deleted with success. Now...\n"
-				else
-					printf "[${red}${icon_ko}${nocolor}] Error, database not deleted. Now...\n"
-				fi
-			else
-				if [ "$database_check" == "$database_name" ]; then
-    					printf "[${green}${icon_ok}${nocolor}] Good, database created with success. Now...\n"
-				else
-					printf "[${red}${icon_ko}${nocolor}] Error, database not created. Now...\n"
-				fi
-			fi
-			break;;
-    "No")
-			break;;
-    *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n";;
+    read -sp "Type the database password: " database_password
+    database_password=${database_password}
+
+    sql="create database if not exists $database_name"
+    if [ "$action_type" == "delete" ]; then
+      sql="drop database $database_name;"
+    fi
+
+    printf "\nMysql log start: ----------------------------------------------------------------\n"
+    #create/delete the database
+    if ! mysql -u$database_user -p$database_password -e "$sql"; then
+      printf "Mysql log end: ----------------------------------------------------------\n"
+      printf "[${red}${icon_ko}${nocolor}] Database errors. Solve this log errors messages.\n"
+      exit 1
+    fi
+
+    #check if the database exists
+    database_check=$(mysql -u$database_user -p$database_password -e "SHOW DATABASES" | grep -Fo $database_name)
+    printf "Mysql log end: ------------------------------------------------------------------\n"
+    if [ "$action_type" == "delete" ]; then
+      if [ "$database_check" != "$database_name" ]; then
+        printf "[${green}${icon_ok}${nocolor}] Good, database deleted with success. Now...\n"
+      else
+        printf "[${red}${icon_ko}${nocolor}] Error, database not deleted. Now...\n"
+      fi
+    else
+      if [ "$database_check" == "$database_name" ]; then
+        printf "[${green}${icon_ok}${nocolor}] Good, database created with success. Now...\n"
+      else
+        printf "[${red}${icon_ko}${nocolor}] Error, database not created. Now...\n"
+      fi
+    fi
+    break
+    ;;
+  "No")
+    break
+    ;;
+  *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
   esac
 done
-
 
 #########################################################
 # Delete the virtual host
 #########################################################
 if [ "$action_type" = "delete" ]; then
 
-	printf "\n${yellow}${icon_wait}${nocolor} Deleting virtual host...\n"
+  printf "\n${yellow}${icon_wait}${nocolor} Deleting virtual host...\n"
 
-	#check if exists the virtual host
-	if [ ! -d /var/www/"$domain" ]; then
+  #check if exists the virtual host
+  if [ ! -d /var/www/"$domain" ]; then
     printf "[${red}${icon_ko}${nocolor}] Sorry, but this virtual host doesn't exists.\n"
-   	exit 1;
-	fi	
+    exit 1
+  fi
 
-	#delete the www directory
-	sudo rm -r /var/www/$domain > /dev/null 2>&1
-	printf "[${green}${icon_ok}${nocolor}] Symbolic link deleted from /var/www\n"
+  #delete the www directory
+  sudo rm -r /var/www/$domain >/dev/null 2>&1
+  printf "[${green}${icon_ok}${nocolor}] Symbolic link deleted from /var/www\n"
 
-	#disable the apache site
-	sudo rm /etc/apache2/sites-available/$domain.conf
-	sudo rm /etc/apache2/sites-enabled/$domain.conf
-	printf "[${green}${icon_ok}${nocolor}] Apache conf files deleted\n"
+  #disable the apache site
+  sudo rm /etc/apache2/sites-available/$domain.conf
+  sudo rm /etc/apache2/sites-enabled/$domain.conf
+  printf "[${green}${icon_ok}${nocolor}] Apache conf files deleted\n"
 
-	#restart apache
-	sudo service apache2 restart > /dev/null 2>&1
-	printf "[${green}${icon_ok}${nocolor}] Apache reloaded!\n"
+  #restart apache
+  sudo service apache2 restart >/dev/null 2>&1
+  printf "[${green}${icon_ok}${nocolor}] Apache reloaded!\n"
 
-	#clear the hosts file
-	sudo sed -i "/$domain/d" /etc/hosts
-	printf "[${green}${icon_ok}${nocolor}] website deleted from /etc/hosts!\n\n\n"
+  #clear the hosts file
+  sudo sed -i "/$domain/d" /etc/hosts
+  printf "[${green}${icon_ok}${nocolor}] website deleted from /etc/hosts!\n\n\n"
 
-  #if exists fail2ban reload 
-  if command -v fail2ban-client &> /dev/null; then
+  #if exists fail2ban reload
+  if command -v fail2ban-client &>/dev/null; then
     sudo fail2ban-client restart
     printf "[${green}${icon_ok}${nocolor}] fail2ban restarted!\n\n\n"
   fi
 
-	#print the final message
-	printf "[${green}${icon_rocket}${nocolor}] You have controlled your fear. Now, release your anger. Only your hatred can destroy me. Virtual host destroyed!\n"		
+  #print the final message
+  printf "[${green}${icon_rocket}${nocolor}] You have controlled your fear. Now, release your anger. Only your hatred can destroy me. Virtual host destroyed!\n"
 
-	exit 1;
+  exit 1
 fi
 
 #################################################
@@ -249,70 +254,73 @@ PS3="Do you want to use PHP-FPM (FastCGI Process Manager)?: "
 actions=("Yes" "No")
 select action in "${actions[@]}"; do
   case $action in
-    "Yes")
-		  printf "${yellow}${icon_wait}${nocolor} Choose the php-fpm version to use:\n"
-			echo ""
-			#choose the php-fpm versions
-			PS3='Type the choice number: '
-			# get all php-fpm installed
-			php_versions=( $(dpkg --get-selections | grep -ohE "php*.*-fpm" | grep -oe '\([0-9.]*\)') )
-			if [ ${#php_versions[@]} -eq 0 ]; then
-				printf "[${red}${icon_ko}${nocolor}] Sorry, but php-fpm is required. Install it with ${green}sudo apt install php${nocolor}x.x${green}-fpm\n"
-				exit 1;
-			fi
-			# current php -v
-			php_current_version=( $(php -v | grep PHP | awk '{print $2}' | head -1 | grep -oE "[0-9]+[.][0-9]") )
+  "Yes")
+    printf "${yellow}${icon_wait}${nocolor} Choose the php-fpm version to use:\n"
+    echo ""
+    #choose the php-fpm versions
+    PS3='Type the choice number: '
+    # get all php-fpm installed
+    php_versions=($(dpkg --get-selections | grep -ohE "php*.*-fpm" | grep -oe '\([0-9.]*\)'))
+    if [ ${#php_versions[@]} -eq 0 ]; then
+      printf "[${red}${icon_ko}${nocolor}] Sorry, but php-fpm is required. Install it with ${green}sudo apt install php${nocolor}x.x${green}-fpm\n"
+      exit 1
+    fi
+    # current php -v
+    php_current_version=($(php -v | grep PHP | awk '{print $2}' | head -1 | grep -oE "[0-9]+[.][0-9]"))
 
-			# user selected version
-			select php_version in "${php_versions[@]}"; do
-				if ! [ "$REPLY" -eq "$REPLY" ] 2> /dev/null; then
-					printf "[${red}${icon_ko}${nocolor}] $REPLY must be an integear. Try again\n"
-					exit 1;
-				fi
-				if [ $REPLY -eq 0 ] || [ $REPLY -gt ${#php_versions[@]} ]; then
-					printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n"
-					exit 1;
-				fi
-				
-				phpfgi=${php_version//./}
-				fastcgimodule="<IfModule mod_fastcgi.c>\n <FilesMatch \".+\.ph(p[345]?|t|tml)$\">\nSetHandler php$phpfgi-fcgi-www\n</FilesMatch>\n</IfModule>\n"
-				fastcgi="<FilesMatch \"\.(cgi|shtml|phtml|php)$\">\nSSLOptions +StdEnvVars\n</FilesMatch>\n<Directory /usr/lib/cgi-bin>\nSSLOptions +StdEnvVars\n</Directory>\n\n$fastcgimodule\n"
-				break
-			done
-			printf "[${green}${icon_ok}${nocolor}] Good, PHP-FPM will be used.\n"
-			break;;
-    "No")
-			printf "[${green}${icon_ok}${nocolor}] Good, PHP-FPM will not be used.\n"
-      break;;
-    *) printf "${red}${icon_ko}${nocolor} $REPLY isn't a valid option. Try again\n";;
+    # user selected version
+    select php_version in "${php_versions[@]}"; do
+      if ! [ "$REPLY" -eq "$REPLY" ] 2>/dev/null; then
+        printf "[${red}${icon_ko}${nocolor}] $REPLY must be an integear. Try again\n"
+        exit 1
+      fi
+      if [ $REPLY -eq 0 ] || [ $REPLY -gt ${#php_versions[@]} ]; then
+        printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n"
+        exit 1
+      fi
+
+      phpfgi=${php_version//./}
+      fastcgimodule="<IfModule mod_fastcgi.c>\n <FilesMatch \".+\.ph(p[345]?|t|tml)$\">\nSetHandler php$phpfgi-fcgi-www\n</FilesMatch>\n</IfModule>\n"
+      fastcgi="<FilesMatch \"\.(cgi|shtml|phtml|php)$\">\nSSLOptions +StdEnvVars\n</FilesMatch>\n<Directory /usr/lib/cgi-bin>\nSSLOptions +StdEnvVars\n</Directory>\n\n$fastcgimodule\n"
+      break
+    done
+    printf "[${green}${icon_ok}${nocolor}] Good, PHP-FPM will be used.\n"
+    break
+    ;;
+  "No")
+    printf "[${green}${icon_ok}${nocolor}] Good, PHP-FPM will not be used.\n"
+    break
+    ;;
+  *) printf "${red}${icon_ko}${nocolor} $REPLY isn't a valid option. Try again\n" ;;
   esac
 done
 
 #check if directory exists
 if [ ! -d "$path" ]; then
-	printf "[${red}${icon_ko}${nocolor}] the $path directory doesn't exists!\n"
-	exit 1;
+  printf "[${red}${icon_ko}${nocolor}] the $path directory doesn't exists!\n"
+  exit 1
 fi
 
 #go into directory
+# shellcheck disable=SC2164
 cd $path
 
 #check the log directory
 if [ ! -d "$path"log ]; then
-	printf "[${red}${icon_ko}${nocolor}] the ${path}log directory doesn't exists!\n"
-	exit 1;
+  printf "[${red}${icon_ko}${nocolor}] the ${path}log directory doesn't exists!\n"
+  exit 1
 fi
 
 # check the public_html directory
 if [ ! -d "$path"public_html ]; then
-	printf "[${red}${icon_ko}${nocolor}] the ${path}public_html directory doesn't exists!\n"
-	exit 1;
-fi	
+  printf "[${red}${icon_ko}${nocolor}] the ${path}public_html directory doesn't exists!\n"
+  exit 1
+fi
 
 # check the site files
 if [ -z "$(ls -A "${path}public_html")" ]; then
-	printf "[${red}${icon_ko}${nocolor}] The ${path}public_html is empty! Please, add before all website files like: wordpress, prestashop, laravel!\n"
-	exit 1;
+  printf "[${red}${icon_ko}${nocolor}] The ${path}public_html is empty! Please, add before all website files like: wordpress, prestashop, laravel!\n"
+  exit 1
 fi
 
 #############################################################
@@ -330,37 +338,39 @@ PS3="Type 1 or 2: "
 actions=("yes" "no")
 select action in "${actions[@]}"; do
   case $action in
-    "yes")
-      # Check package dependencies
-      cert_package="mkcert"
-		  if [ "production" == "$environment_type" ]; then
-			  cert_package="certbot"
-		  fi
+  "yes")
+    # Check package dependencies
+    cert_package="mkcert"
+    if [ "production" == "$environment_type" ]; then
+      cert_package="certbot"
+    fi
 
-		  if ! command -v $cert_package &> /dev/null; then
-			  printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}$cert_package${nocolor} is required. Install it before!\n"
-			  exit 1;
-		  fi
+    if ! command -v $cert_package &>/dev/null; then
+      printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}$cert_package${nocolor} is required. Install it before!\n"
+      exit 1
+    fi
 
-		  # check if ssl mod is enabled
-		  if [ ! -f "/etc/apache2/mods-enabled/ssl.load" ]; then
- 			  printf "[${red}${icon_ko}${nocolor}] Enable SSL on Apache2 with ${green}sudo a2enmod ssl\n"
-   			exit 1;
-		  fi
+    # check if ssl mod is enabled
+    if [ ! -f "/etc/apache2/mods-enabled/ssl.load" ]; then
+      printf "[${red}${icon_ko}${nocolor}] Enable SSL on Apache2 with ${green}sudo a2enmod ssl\n"
+      exit 1
+    fi
 
-		  #create the ssl certificate
-		  if [ "development" == "$environment_type" ]; then
-			  mkcert $domain > /dev/null 2>&1
-        ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
-		  else
-			  sudo certbot certonly --cert-name $domain -d $domain --pre-hook "service apache2 stop" --post-hook "service apache2 start"
-			  ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
-      fi
-      printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
-      break;;
-    "no")
-		  break;;
-    *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n";;
+    #create the ssl certificate
+    if [ "development" == "$environment_type" ]; then
+      mkcert $domain >/dev/null 2>&1
+      ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
+    else
+      sudo certbot certonly --cert-name $domain -d $domain --pre-hook "service apache2 stop" --post-hook "service apache2 start"
+      ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
+    fi
+    printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
+    break
+    ;;
+  "no")
+    break
+    ;;
+  *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
   esac
 done
 
@@ -382,14 +392,14 @@ sudo sh -c "echo '<VirtualHost *:80>\n\nServerName $domain\nServerAlias $domain\
 printf "[${green}${icon_ok}${nocolor}] Virtual host created! For extra options, edit this file: /etc/apache2/sites-enabled/$domain.conf\n"
 
 #Enable the site
-sudo a2ensite $domain.conf > /dev/null 2>&1
+sudo a2ensite $domain.conf >/dev/null 2>&1
 
 #restart apache
-sudo service apache2 restart > /dev/null 2>&1
+sudo service apache2 restart >/dev/null 2>&1
 printf "[${green}${icon_ok}${nocolor}] Apache reloaded!\n"
 
-#if exists fail2ban reload 
-if command -v fail2ban-client &> /dev/null; then
+#if exists fail2ban reload
+if command -v fail2ban-client &>/dev/null; then
   sudo fail2ban-client restart
   printf "[${green}${icon_ok}${nocolor}] fail2ban restarted!\n\n\n"
 fi
@@ -397,8 +407,8 @@ fi
 #Add the domain to hosts
 sudo sh -c "echo '127.0.0.1	$domain' >> /etc/hosts"
 printf "[${green}${icon_ok}${nocolor}] Website added to /etc/hosts!\n\n\n"
-	
+
 #print the final message
 printf "[${green}${icon_rocket}${nocolor}] The Force will be with you. Always. Virtual host created: $domain\n"
 
-exit 1;
+exit 1
