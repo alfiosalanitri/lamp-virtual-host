@@ -4,7 +4,7 @@
 # lamp_virtual_host - create or delete an apache virtual host with database mysql support, custom fast-cgi php version and ssl certificate
 #
 # SYNOPSIS
-#	lamp_virtual_host /path/to/www.example.com/
+#	lamp_virtual_host /path/to/example.com/ or lamp_virtual_host /path/to/example.com/ -a www.example.com,shop.example.com
 #
 # INSTALLATION
 #	sudo mv lamp_virtual_host /usr/bin
