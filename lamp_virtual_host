@@ -58,6 +58,23 @@ fi
 
 #domain name that is used for virtual host
 domain=$(basename "$1")
+#this is the string used in /etc/hosts file (127.0.0.1   example.com)
+hosts_domain=$domain
+
+#domain alias if argument -a exists
+domain_alias=""
+certbot_domains=$hosts_domain
+if [ "-a" == "$2" ]; then
+  if [ ! "$3" ]; then
+    printf "[${red}${icon_ko}${nocolor}] Type -a followed by comma separated domain alias (Es. www.example.com,app.example.com).\n"
+    exit 1
+  fi
+  #replace comma with space
+  domain_alias="$(echo $3 | sed -e 's/,/ /')"
+  hosts_domain="$domain $domain_alias"
+  #certbot require -d followed by domains comma separated
+  certbot_domains="${domain},${3}"
+fi
 
 #full path of domain
 path="$(pwd)/"$1
@@ -87,12 +104,12 @@ actions=("development" "production")
 select action in "${actions[@]}"; do
   case $action in
   "development")
-    printf "[${green}${icon_ok}${nocolor}] Good, I will create the ssl certificate with certbot.\n"
+    printf "[${green}${icon_ok}${nocolor}] Good, I will create the ssl certificate with mkcert for local use only.\n"
     environment_type=$action
     break
     ;;
   "production")
-    printf "[${green}${icon_ok}${nocolor}] Make sure you have added the domain dns that point to this server.\n"
+    printf "[${green}${icon_ok}${nocolor}] Make sure you have added the domain dns that point to this server for activate the let's encrypt certificate.\n"
     environment_type=$action
     break
     ;;
@@ -223,7 +240,7 @@ if [ "$action_type" = "delete" ]; then
   printf "[${green}${icon_ok}${nocolor}] Apache reloaded!\n"
 
   #clear the hosts file
-  sudo sed -i "/$domain/d" /etc/hosts
+  sudo sed -i "/$hosts_domain/d" /etc/hosts
   printf "[${green}${icon_ok}${nocolor}] website deleted from /etc/hosts!\n\n\n"
 
   #if exists fail2ban reload
@@ -275,7 +292,7 @@ select action in "${actions[@]}"; do
       fi
 
       phpfgi=${php_version//./}
-      fastcgimodule="<IfModule mod_fastcgi.c>\n <FilesMatch \".+\.ph(p[345]?|t|tml)$\">\nSetHandler php$phpfgi-fcgi-www\n</FilesMatch>\n</IfModule>\n"
+      fastcgimodule="<IfModule mod_fastcgi.c>\n<FilesMatch \".+\.ph(p[345]?|t|tml)$\">\nSetHandler php$phpfgi-fcgi-www\n</FilesMatch>\n</IfModule>\n"
       fastcgi="<FilesMatch \"\.(cgi|shtml|phtml|php)$\">\nSSLOptions +StdEnvVars\n</FilesMatch>\n<Directory /usr/lib/cgi-bin>\nSSLOptions +StdEnvVars\n</Directory>\n\n$fastcgimodule\n"
       break
     done
@@ -353,11 +370,11 @@ select action in "${actions[@]}"; do
 
     #create the ssl certificate
     if [ "development" == "$environment_type" ]; then
-      mkcert $domain >/dev/null 2>&1
-      ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
+      mkcert $hosts_domain >/dev/null 2>&1
+      ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerName $domain\nServerAlias $domain_alias\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
     else
-      sudo certbot certonly --cert-name $domain -d $domain --pre-hook "service apache2 stop" --post-hook "service apache2 start"
-      ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerAdmin webmaster@localhost\nServerName $domain\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
+      sudo certbot certonly --cert-name $domain -d $certbot_domains --pre-hook "service apache2 stop" --post-hook "service apache2 start"
+      ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerName $domain\nServerAlias $domain_alias\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
     fi
     printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
     break
@@ -383,7 +400,7 @@ sudo touch /etc/apache2/sites-available/$domain.conf
 printf "[${green}${icon_ok}${nocolor}] Apache config file created with success!\n"
 
 #create the virtual host apache file
-sudo sh -c "echo '<VirtualHost *:80>\n\nServerName $domain\nServerAlias $domain\nServerAdmin webmaster@localhost\nSetEnv PATH \"/var/www/$domain/public_html\"\nDocumentRoot /var/www/$domain/public_html\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\n$fastcgi</VirtualHost>$ssl_support' >> /etc/apache2/sites-available/$domain.conf"
+sudo sh -c "echo '<VirtualHost *:80>\n\nServerName $domain\nServerAlias $domain_alias\nSetEnv PATH \"/var/www/$domain/public_html\"\nDocumentRoot /var/www/$domain/public_html\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\n$fastcgi</VirtualHost>$ssl_support' >> /etc/apache2/sites-available/$domain.conf"
 printf "[${green}${icon_ok}${nocolor}] Virtual host created! For extra options, edit this file: /etc/apache2/sites-enabled/$domain.conf\n"
 
 #Enable the site
@@ -400,7 +417,7 @@ if command -v fail2ban-client &>/dev/null; then
 fi
 
 #Add the domain to hosts
-sudo sh -c "echo '127.0.0.1	$domain' >> /etc/hosts"
+sudo sh -c "echo '127.0.0.1	$hosts_domain' >> /etc/hosts"
 printf "[${green}${icon_ok}${nocolor}] Website added to /etc/hosts!\n\n\n"
 
 #print the final message
