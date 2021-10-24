@@ -22,6 +22,3 @@ ssl certificate*
        
 # AUTHOR: 
 lamp_virtual_host is written by Alfio Salanitri www.alfiosalanitri.it and are licensed under the terms of the GNU General Public License, version 2 or higher. 
-
-# TODO:
-Add support to domain alias like www.example.com, app.example.com, *.example.com
