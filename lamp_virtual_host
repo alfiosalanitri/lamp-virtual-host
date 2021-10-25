@@ -17,7 +17,7 @@
 #	- mkcert or certbot for ssl certificate (optional)
 #
 # AUTHOR:
-#	lamp_virtual_host is written by Alfio Salanitri <www.alfiosalanitri.it> and are licensed under the terms of the GNU General Public License, version 2 or higher.
+#	lamp_virtual_host is written by Alfio Salanitri <www.alfiosalanitri.it> and are licensed under MIT License.
 #
 #
 #############################################################
