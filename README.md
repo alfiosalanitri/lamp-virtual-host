@@ -3,7 +3,7 @@
 ssl certificate*
 
 # DESCRIPTION
-With lamp_virtual_host bash script you can add or delete one apache virtual host to your lamp stack. You can also to add a database and choose one of yours fast-cgi php module if installed.
+With lamp_virtual_host bash script you can add or delete an apache virtual host to/from your lamp stack. You can also to add a database and choose one of yours fast-cgi php module if installed.
 
 If you choose development environment option, the script will add the ssl certificate with mkcert package if installed on your machine.
 If you choose production environment, the script will add the ssl certificate with certbot and let's encrypt. Note that this step requires the dns for domain and aliases setted to your server ip address.
