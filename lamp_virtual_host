@@ -87,7 +87,6 @@ action_type=""
 
 #php fast cgi
 fastcgi=""
-fastcgimodule=""
 
 #############################################################
 # User choises
@@ -246,6 +245,7 @@ if [ "$action_type" = "delete" ]; then
   #if exists fail2ban reload
   if command -v fail2ban-client &>/dev/null; then
     sudo fail2ban-client restart
+    sudo systemctl restart fail2ban.service
     printf "[${green}${icon_ok}${nocolor}] fail2ban restarted!\n\n\n"
   fi
 
@@ -290,10 +290,7 @@ select action in "${actions[@]}"; do
         printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n"
         exit 1
       fi
-
-      phpfgi=${php_version//./}
-      fastcgimodule="<IfModule mod_fastcgi.c>\n<FilesMatch \".+\.ph(p[345]?|t|tml)$\">\nSetHandler php$phpfgi-fcgi-www\n</FilesMatch>\n</IfModule>\n"
-      fastcgi="<FilesMatch \"\.(cgi|shtml|phtml|php)$\">\nSSLOptions +StdEnvVars\n</FilesMatch>\n<Directory /usr/lib/cgi-bin>\nSSLOptions +StdEnvVars\n</Directory>\n\n$fastcgimodule\n"
+      fastcgi="<FilesMatch \.php$>\nSetHandler \"proxy:unix:/run/php/php$php_version-fpm.sock|fcgi://localhost\"\n</FilesMatch>\n"
       break
     done
     printf "[${green}${icon_ok}${nocolor}] Good, PHP-FPM will be used.\n"
@@ -373,7 +370,7 @@ select action in "${actions[@]}"; do
       mkcert $hosts_domain >/dev/null 2>&1
       ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerName $domain\nServerAlias $domain_alias\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
     else
-      sudo certbot certonly --cert-name $domain -d $certbot_domains --pre-hook "service apache2 stop" --post-hook "service apache2 start"
+      sudo certbot certonly --cert-name $domain -d $certbot_domains --pre-hook "systemctl stop apache2.service" --post-hook "systemctl start apache2.service"
       ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerName $domain\nServerAlias $domain_alias\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi</VirtualHost>\n</IfModule>"
     fi
     printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
@@ -400,7 +397,7 @@ sudo touch /etc/apache2/sites-available/$domain.conf
 printf "[${green}${icon_ok}${nocolor}] Apache config file created with success!\n"
 
 #create the virtual host apache file
-sudo sh -c "echo '<VirtualHost *:80>\n\nServerName $domain\nServerAlias $domain_alias\nSetEnv PATH \"/var/www/$domain/public_html\"\nDocumentRoot /var/www/$domain/public_html\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\n$fastcgi</VirtualHost>$ssl_support' >> /etc/apache2/sites-available/$domain.conf"
+sudo sh -c "echo '<VirtualHost *:80>\n\nServerName $domain\nServerAlias $domain_alias\nSetEnv PATH \"/var/www/$domain/public_html\"\nDocumentRoot /var/www/$domain/public_html\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\n</VirtualHost>$ssl_support' >> /etc/apache2/sites-available/$domain.conf"
 printf "[${green}${icon_ok}${nocolor}] Virtual host created! For extra options, edit this file: /etc/apache2/sites-enabled/$domain.conf\n"
 
 #Enable the site
