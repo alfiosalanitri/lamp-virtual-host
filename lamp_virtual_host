@@ -63,8 +63,7 @@ if [ $# -eq 0 ]; then
 elif [[ ( $# == "--help") ||  $# == "-h" ]]; then
   display_help
   exit 1
-fi
-if [ ! -d "$1" ]; then
+elif [ ! -d "$1" ]; then
   printf "[${red}${icon_ko}${nocolor}] Type the directory that include your website (with final slash). ${red}N.B.${nocolor} rename the directory with website domain. Example: www.example.com\n"
   exit 1
 fi
