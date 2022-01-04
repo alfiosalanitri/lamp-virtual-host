@@ -60,7 +60,7 @@ fi
 if [ $# -eq 0 ]; then
   display_help
   exit 1
-elif [[ ( $# == "--help") ||  $# == "-h" ]]; then
+elif [[ ( $1 == "--help") ||  $1 == "-h" ]]; then
   display_help
   exit 1
 elif [ ! -d "$1" ]; then
