@@ -33,6 +33,12 @@ icon_ok='\xE2\x9C\x94'
 icon_ko='\xe2\x9c\x97'
 icon_wait='\xE2\x8C\x9B'
 icon_rocket='\xF0\x9F\x9A\x80'
+#############################################################
+# Help
+#############################################################
+display_help() { 
+	echo -e "\nUsage: $0 /path/to/www.example.com \n" 
+} 
 
 #############################################################
 # Check Dependencies
@@ -51,6 +57,13 @@ fi
 #############################################################
 # Check Required variables
 #############################################################
+if [ $# -eq 0 ]; then
+  display_help
+  exit 1
+elif [[ ( $# == "--help") ||  $# == "-h" ]]; then
+  display_help
+  exit 1
+fi
 if [ ! -d "$1" ]; then
   printf "[${red}${icon_ko}${nocolor}] Type the directory that include your website (with final slash). ${red}N.B.${nocolor} rename the directory with website domain. Example: www.example.com\n"
   exit 1
