@@ -74,6 +74,7 @@ fi
 domain=$(basename "$1")
 #this is the string used in /etc/hosts file (127.0.0.1   example.com)
 hosts_domain=$domain
+website_url="http://$domain"
 
 #domain alias if argument -a exists
 domain_alias=""
@@ -344,14 +345,14 @@ cd $path
 
 #check the log directory
 if [ ! -d "$path"log ]; then
-  printf "[${red}${icon_ko}${nocolor}] the ${path}log directory doesn't exists!\n"
-  exit 1
+  mkdir "$path"log
+  printf "[${green}${icon_ok}${nocolor}] Log directory created.\n"
 fi
 
 # check the public_html directory
 if [ ! -d "$path"public_html ]; then
-  printf "[${red}${icon_ko}${nocolor}] the ${path}public_html directory doesn't exists!\n"
-  exit 1
+  mkdir "$path"public_html
+  printf "[${green}${icon_ok}${nocolor}] public_html directory created.\n"
 fi
 
 # check if there is files inside website directory
@@ -402,6 +403,7 @@ select action in "${actions[@]}"; do
       ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerName $domain\nServerAlias $domain_alias\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi_ssl</VirtualHost>\n</IfModule>"
     fi
     printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
+    website_url="https://$domain"
     break
     ;;
   "no")
@@ -438,6 +440,7 @@ printf "[${green}${icon_ok}${nocolor}] Apache reloaded!\n"
 #if exists fail2ban reload
 if command -v fail2ban-client &>/dev/null; then
   sudo fail2ban-client restart
+  sudo systemctl restart fail2ban.service
   printf "[${green}${icon_ok}${nocolor}] fail2ban restarted!\n\n\n"
 fi
 
@@ -446,6 +449,6 @@ sudo sh -c "echo '127.0.0.1	$hosts_domain' >> /etc/hosts"
 printf "[${green}${icon_ok}${nocolor}] Website added to /etc/hosts!\n\n\n"
 
 #print the final message
-printf "[${green}${icon_rocket}${nocolor}] The Force will be with you. Always. Virtual host created: $domain\n"
+printf "[${green}${icon_rocket}${nocolor}] The Force will be with you. Always. Virtual host created. Go to $website_url\n"
 
 exit 1
