@@ -354,10 +354,10 @@ if [ ! -d "$path"public_html ]; then
   exit 1
 fi
 
-# check the site files
+# check if there is files inside website directory
 if [ -z "$(ls -A "${path}public_html")" ]; then
-  printf "[${red}${icon_ko}${nocolor}] The ${path}public_html is empty! Please, add before all website files like: wordpress, prestashop, laravel!\n"
-  exit 1
+  #create an index file
+  echo "<?php phpinfo();" >> "${path}public_html/index.php"
 fi
 
 #############################################################
