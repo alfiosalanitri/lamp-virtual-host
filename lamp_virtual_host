@@ -36,8 +36,10 @@ icon_rocket='\xF0\x9F\x9A\x80'
 #############################################################
 # Help
 #############################################################
-display_help() { 
-	echo -e "\nUsage: $0 /path/to/www.example.com \n" 
+display_help() {
+	printf "[${yellow}${icon_wait}${nocolor}] Type the full path to website directory.\n"
+  echo -e "\nExample 1: $0 /path/to/www.example.com \n"
+	echo -e "\nExample 2: $0 /path/to/www.example.com -a www.example.com,shop.example.com\n" 
 } 
 
 #############################################################
