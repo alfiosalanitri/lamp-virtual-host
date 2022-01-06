@@ -413,6 +413,58 @@ if [ ! -d "${path}${public_dir}" ]; then
   printf "[${green}${icon_ok}${nocolor}] $public_dir directory created.\n"
 fi
 
+#############################################################
+# INSTALL APPLICATION
+#############################################################
+check_application_dep() {
+	if ! command -v wget &> /dev/null; then
+    printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}wget${nocolor} is required. Install it with apt install wget.\n"
+    exit 1;
+  fi
+	if ! command -v tar &> /dev/null; then
+    printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}tar${nocolor} is required. Install it with apt install tar.\n"
+    exit 1;
+  fi
+
+}
+
+echo ""
+echo "*************************"
+echo "* 5. INSTALL APPLICATION"
+echo "*************************"
+echo ""
+sudo printf "${yellow}${icon_wait}${nocolor} Do you want to install an Application?\n"
+echo ""
+ssl_support=''
+PS3="Type the number with your choise: "
+actions=("Wordpress" "No")
+select action in "${actions[@]}"; do
+  case $action in
+  "Wordpress")
+   
+		#check wget,tar package 
+		check_application_dep
+		
+		#download wordpress
+		wordpress_archive="latest-it_IT.tar.gz"
+		wordpress_url="https://it.wordpress.org/$wordpress_archive"
+		printf "[${yellow}${icon_wait}${nocolor}] downloading wordpress...\n"
+		wget -O "$wordpress_archive" "$wordpress_url" > /dev/null 2>&1
+  	printf "[${green}${icon_ok}${nocolor}] wordpress downloaded.\n"
+		tar xf $wordpress_archive
+		rm $wordpress_archive
+		mv wordpress/* $public_dir
+		rm -r wordpress
+		printf "[${green}${icon_ok}${nocolor}] Wordpress ready to install!\n"
+    break
+    ;;
+  "No")
+    break
+    ;;
+  *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
+  esac
+done
+
 # check if there is files inside website directory
 if [ -z "$(ls -A "${path}${public_dir}")" ]; then
   #create an index file
@@ -420,11 +472,11 @@ if [ -z "$(ls -A "${path}${public_dir}")" ]; then
 fi
 
 #############################################################
-# SSl certificats
+# SSL certificate
 #############################################################
 echo ""
 echo "*************************"
-echo "* 5. SSL CERTIFICATE"
+echo "* 6. SSL CERTIFICATE"
 echo "*************************"
 echo ""
 sudo printf "${yellow}${icon_wait}${nocolor} Do you want to add an SSL Certificate to ${green}$domain${nocolor}?\n"
