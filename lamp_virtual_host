@@ -3,8 +3,6 @@
 # NAME
 # lamp_virtual_host - create or delete an apache virtual host with database mysql support, custom fast-cgi php version and ssl certificate
 #
-# SYNOPSIS
-#	lamp_virtual_host /path/to/example.com/ or lamp_virtual_host /path/to/example.com/ -a www.example.com,shop.example.com
 #
 # INSTALLATION
 #	sudo mv lamp_virtual_host /usr/bin
@@ -38,20 +36,10 @@ icon_rocket='\xF0\x9F\x9A\x80'
 #############################################################
 display_help() {
 cat << EOF
--------------
---- Usage ---
--------------
 
-Open yout terminal and type: 
-----------------------------
-$0 /path/to/www.example.com
-----------------------------
-  
-You can also type:
----------------------------------------------------------------
-$0 /path/to/www.example.com -a www.example.com,shop.example.com 
----------------------------------------------------------------
-to create website aliases. 
+Script Usage:
+
+$(basename $0) [-h] [-a www.example.com,shop.example.com] [-d filedir] /some/path/www.example.com
 EOF
 } 
 
@@ -70,42 +58,70 @@ if [ -z "$(ls -A "/etc/php")" ]; then
 fi
 
 #############################################################
-# Check Required variables
+# Get options
 #############################################################
-if [ $# -eq 0 ]; then
-  display_help
-  exit 1
-elif [[ ( $1 == "--help") ||  $1 == "-h" ]]; then
-  display_help
-  exit 1
-elif [ ! -d "$1" ]; then
+while getopts 'ha:d:' option; do
+	case "${option}"
+		in
+		h)
+			display_help
+			exit 1
+			;;			
+		a)
+  		domain_alias_with_comma=$OPTARG
+			#replace comma with space
+			domain_alias_with_space="$(echo $OPTARG | sed -e 's/,/ /')"
+			;;
+		d)
+			custom_public_dir=$OPTARG
+			;;
+		?)
+			display_help
+			exit 1
+			;;
+	esac
+done
+shift "$(($OPTIND -1))"
+
+
+#check if the last args is a valid directory
+if [ ! -d "$*" ]; then
   printf "[${red}${icon_ko}${nocolor}] Type the directory that include your website (with final slash). ${red}N.B.${nocolor} rename the directory with website domain. Example: www.example.com\n"
   exit 1
 fi
 
 #domain name that is used for virtual host
-domain=$(basename "$1")
+domain=$(basename "$*")
+
 #this is the string used in /etc/hosts file (127.0.0.1   example.com)
 hosts_domain=$domain
-website_url="http://$domain/"
-
-#domain alias if argument -a exists
-domain_alias=""
-certbot_domains=$hosts_domain
-if [ "-a" == "$2" ]; then
-  if [ ! "$3" ]; then
-    printf "[${red}${icon_ko}${nocolor}] Type -a followed by comma separated domain alias (Es. www.example.com,app.example.com).\n"
-    exit 1
-  fi
-  #replace comma with space
-  domain_alias="$(echo $3 | sed -e 's/,/ /')"
-  hosts_domain="$domain $domain_alias"
-  #certbot require -d followed by domains comma separated
-  certbot_domains="${domain},${3}"
+#if there is one or more aliases, add this to hosts_domain list
+if [ -n "$domain_alias_with_space" ]; then
+	hosts_domain="$domain $domain_alias_with_space"
 fi
 
-#full path of domain
-path="$(pwd)/"$1
+#this is the website url
+website_url="http://$domain/"
+
+#this is the domain alias comma separated to add to virtual host file
+domain_alias=$domain_alias_with_comma
+
+#certbot config domains
+certbot_domains=$domain
+#if there is one or more aliases, add to certbot domain comma separated
+if [ -n "$domain_alias" ]; then
+	certbot_domains="${domain},${domain_alias}"
+fi
+
+#full path of website
+path="$(pwd)/"$*
+
+#default file directory
+public_dir="public_html"
+#if user type custom public directory, use this.
+if [ -n "$custom_public_dir" ]; then
+	public_dir=$custom_public_dir
+fi
 
 #environment type
 environment_type=""
@@ -258,6 +274,13 @@ if [ "$action_type" = "delete" ]; then
   sudo rm -r /var/www/$domain > /dev/null 2>&1
   printf "[${green}${icon_ok}${nocolor}] Symbolic link deleted from /var/www\n"
 
+	#delete mkcert certificates
+	if [ "development" == "$environment_type" ]; then
+		cd $path
+		rm *.pem
+		printf "[${green}${icon_ok}${nocolor}] mkcert certificates deleted.\n"
+	fi
+
   #disable the apache site
   sudo rm /etc/apache2/sites-available/$domain.conf
   sudo rm /etc/apache2/sites-enabled/$domain.conf
@@ -376,7 +399,6 @@ if [ ! -d "$path" ]; then
 fi
 
 #go into directory
-# shellcheck disable=SC2164
 cd $path
 
 #check the log directory
@@ -385,16 +407,16 @@ if [ ! -d "$path"log ]; then
   printf "[${green}${icon_ok}${nocolor}] Log directory created.\n"
 fi
 
-# check the public_html directory
-if [ ! -d "$path"public_html ]; then
-  mkdir "$path"public_html
-  printf "[${green}${icon_ok}${nocolor}] public_html directory created.\n"
+# check the public_dir
+if [ ! -d "${path}${public_dir}" ]; then
+  mkdir "${path}${public_dir}"
+  printf "[${green}${icon_ok}${nocolor}] $public_dir directory created.\n"
 fi
 
 # check if there is files inside website directory
-if [ -z "$(ls -A "${path}public_html")" ]; then
+if [ -z "$(ls -A "${path}${public_dir}")" ]; then
   #create an index file
-  echo "<?php phpinfo();" >> "${path}public_html/index.php"
+  echo "<?php phpinfo();" >> "${path}${public_dir}/index.php"
 fi
 
 #############################################################
@@ -433,18 +455,22 @@ select action in "${actions[@]}"; do
     #create the ssl certificate
     if [ "development" == "$environment_type" ]; then
       mkcert $hosts_domain >/dev/null 2>&1
-      ssl_support=$(cat <<EOF
+      #check the .pem filenames (sometimes mkcert create file with ...+1.pem
+			certificate_file=$(basename $(find $path -name "*.pem" -not -name "*-key.pem"))
+			certificate_keyfile=$(basename $(find $path -name "*-key.pem"))
+			
+			ssl_support=$(cat <<EOF
 <IfModule mod_ssl.c>
   <VirtualHost _default_:443>
     ServerName $domain
     ServerAlias $domain_alias
-    DocumentRoot /var/www/$domain/public_html
+    DocumentRoot /var/www/$domain/$public_dir
     ErrorLog /var/www/$domain/log/error.log
     CustomLog /var/www/$domain/log/access.log combined
     
     SSLEngine on
-    SSLCertificateFile /var/www/$domain/$domain.pem
-    SSLCertificateKeyFile /var/www/$domain/$domain-key.pem
+    SSLCertificateFile /var/www/$domain/$certificate_file
+    SSLCertificateKeyFile /var/www/$domain/$certificate_keyfile
 
 $fastcgi_ssl
   </VirtualHost>
@@ -458,7 +484,7 @@ EOF
   <VirtualHost _default_:443>
     ServerName $domain
     ServerAlias $domain_alias
-    DocumentRoot /var/www/$domain/public_html
+    DocumentRoot /var/www/$domain/$public_dir
     ErrorLog /var/www/$domain/log/error.log
     CustomLog /var/www/$domain/log/access.log combined
 
@@ -505,8 +531,8 @@ sudo sh -c "echo '$(cat <<EOF
 <VirtualHost *:80>
   ServerName $domain
   ServerAlias $domain_alias
-  SetEnv PATH "/var/www/$domain/public_html"
-  DocumentRoot /var/www/$domain/public_html
+  SetEnv PATH "/var/www/$domain/$public_dir"
+  DocumentRoot /var/www/$domain/$public_dir
   ErrorLog /var/www/$domain/log/error.log
   CustomLog /var/www/$domain/log/access.log combined
   
