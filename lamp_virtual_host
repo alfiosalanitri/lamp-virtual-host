@@ -416,18 +416,6 @@ fi
 #############################################################
 # INSTALL APPLICATION
 #############################################################
-check_application_dep() {
-	if ! command -v wget &> /dev/null; then
-    printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}wget${nocolor} is required. Install it with apt install wget.\n"
-    exit 1;
-  fi
-	if ! command -v tar &> /dev/null; then
-    printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}tar${nocolor} is required. Install it with apt install tar.\n"
-    exit 1;
-  fi
-
-}
-
 echo ""
 echo "*************************"
 echo "* 5. INSTALL APPLICATION"
@@ -437,14 +425,21 @@ sudo printf "${yellow}${icon_wait}${nocolor} Do you want to install an Applicati
 echo ""
 ssl_support=''
 PS3="Type the number with your choise: "
-actions=("Wordpress" "No")
+actions=("Wordpress" "Laravel" "No")
 select action in "${actions[@]}"; do
   case $action in
   "Wordpress")
    
 		#check wget,tar package 
-		check_application_dep
-		
+		if ! command -v wget &> /dev/null; then
+    	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}wget${nocolor} is required. Install it with apt install wget.\n"
+    	exit 1;
+  	fi
+		if ! command -v tar &> /dev/null; then
+    	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}tar${nocolor} is required. Install it with apt install tar.\n"
+    	exit 1;
+  	fi
+	
 		#download wordpress
 		wordpress_archive="latest-it_IT.tar.gz"
 		wordpress_url="https://it.wordpress.org/$wordpress_archive"
@@ -458,6 +453,25 @@ select action in "${actions[@]}"; do
 		printf "[${green}${icon_ok}${nocolor}] Wordpress ready to install!\n"
     break
     ;;
+	"Laravel")
+		if ! command -v composer &> /dev/null; then
+			printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}composer${nocolor} is required. Install it with: https://getcomposer.org/download/\n"
+    	exit 1;
+		else
+			#create laravel
+			printf "[${yellow}${icon_wait}${nocolor}] installing laravel...\n"
+			composer create-project laravel/laravel webapp > /dev/null 2>&1
+			#remove public_dir and change to laravel public
+			rm -r $public_dir
+			public_dir="webapp/public"
+			#set correct permissions
+			sudo chown -R $USER:www-data "${path}webapp"
+			sudo chmod -R ug+w "${path}webapp/storage"
+			printf "[${green}${icon_ok}${nocolor}] Laravel installed!\n"
+		fi
+		
+		break
+		;;
   "No")
     break
     ;;
