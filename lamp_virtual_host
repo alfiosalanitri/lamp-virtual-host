@@ -37,9 +37,22 @@ icon_rocket='\xF0\x9F\x9A\x80'
 # Help
 #############################################################
 display_help() {
-  echo -e "Usage:"
-  echo -e "Option 1: $0 /path/to/www.example.com"
-  echo -e "Option 2: $0 /path/to/www.example.com -a www.example.com,shop.example.com\n" 
+cat << EOF
+-------------
+--- Usage ---
+-------------
+
+Open yout terminal and type: 
+----------------------------
+$0 /path/to/www.example.com
+----------------------------
+  
+You can also type:
+---------------------------------------------------------------
+$0 /path/to/www.example.com -a www.example.com,shop.example.com 
+---------------------------------------------------------------
+to create website aliases. 
+EOF
 } 
 
 #############################################################
@@ -74,7 +87,7 @@ fi
 domain=$(basename "$1")
 #this is the string used in /etc/hosts file (127.0.0.1   example.com)
 hosts_domain=$domain
-website_url="http://$domain"
+website_url="http://$domain/"
 
 #domain alias if argument -a exists
 domain_alias=""
@@ -242,7 +255,7 @@ if [ "$action_type" = "delete" ]; then
   fi
 
   #delete the www directory
-  sudo rm -r /var/www/$domain >/dev/null 2>&1
+  sudo rm -r /var/www/$domain > /dev/null 2>&1
   printf "[${green}${icon_ok}${nocolor}] Symbolic link deleted from /var/www\n"
 
   #disable the apache site
@@ -251,7 +264,7 @@ if [ "$action_type" = "delete" ]; then
   printf "[${green}${icon_ok}${nocolor}] Apache conf files deleted\n"
 
   #restart apache
-  sudo service apache2 restart >/dev/null 2>&1
+  sudo service apache2 restart > /dev/null 2>&1
   printf "[${green}${icon_ok}${nocolor}] Apache reloaded!\n"
 
   #clear the hosts file
@@ -310,12 +323,35 @@ select action in "${actions[@]}"; do
       #check if exists fast cgi module for debian or ubuntu
       if [ -n "$(sudo ls /etc/apache2/mods-enabled/ | grep fcgid.conf)" ]; then
         #config for apache fcgid module (in debian)
-        fastcgi="\n\n<FilesMatch \.php$>\nSetHandler \"proxy:unix:/run/php/php$php_version-fpm.sock|fcgi://localhost\"\n</FilesMatch>\n"
+        fastcgi=$(cat <<EOF
+  <FilesMatch \.php$>
+    SetHandler "proxy:unix:/run/php/php${php_version}-fpm.sock|fcgi://localhost"
+  </FilesMatch>
+EOF
+)
         fastcgi_ssl=$fastcgi
       elif [ -n "$(sudo ls /etc/apache2/mods-enabled/ | grep fastcgi.conf)" ]; then
         #config for fastcgi (in ubuntu)
-        fastcgi="\n\n<IfModule mod_fastcgi.c>\n<FilesMatch \".+\.ph(p[345]?|t|tml)\$\">\nSetHandler php${php_version//./}-fcgi-www\n</FilesMatch>\n</IfModule>\n"
-        fastcgi_ssl="<FilesMatch \"\.(cgi|shtml|phtml|php)\$\">\nSSLOptions +StdEnvVars\n</FilesMatch>\n<Directory /usr/lib/cgi-bin>\nSSLOptions +StdEnvVars\n</Directory>$fastcgi\n"
+        fastcgi=$(cat <<EOF
+  <IfModule mod_fastcgi.c>
+    <FilesMatch ".+\.ph(p[345]?|t|tml)$">
+      SetHandler php${php_version//./}-fcgi-www
+    </FilesMatch>
+  </IfModule> 
+EOF
+)
+        fastcgi_ssl=$(cat <<EOF
+  <FilesMatch "\.(cgi|shtml|phtml|php)$">
+    SSLOptions +StdEnvVars
+  </FilesMatch>
+  
+  <Directory /usr/lib/cgi-bin>
+    SSLOptions +StdEnvVars
+  </Directory>
+
+  $fastcgi
+EOF
+)
       else
         printf "[${red}${icon_ko}${nocolor}] Sorry, but the fastcgi module is required. Install it before.\n"
         exit 1
@@ -397,13 +433,47 @@ select action in "${actions[@]}"; do
     #create the ssl certificate
     if [ "development" == "$environment_type" ]; then
       mkcert $hosts_domain >/dev/null 2>&1
-      ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerName $domain\nServerAlias $domain_alias\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /var/www/$domain/$domain.pem\nSSLCertificateKeyFile /var/www/$domain/$domain-key.pem\n\n$fastcgi_ssl</VirtualHost>\n</IfModule>"
+      ssl_support=$(cat <<EOF
+<IfModule mod_ssl.c>
+  <VirtualHost _default_:443>
+    ServerName $domain
+    ServerAlias $domain_alias
+    DocumentRoot /var/www/$domain/public_html
+    ErrorLog /var/www/$domain/log/error.log
+    CustomLog /var/www/$domain/log/access.log combined
+    
+    SSLEngine on
+    SSLCertificateFile /var/www/$domain/$domain.pem
+    SSLCertificateKeyFile /var/www/$domain/$domain-key.pem
+
+$fastcgi_ssl
+  </VirtualHost>
+</IfModule>
+EOF
+)
     else
       sudo certbot certonly --cert-name $domain -d $certbot_domains --pre-hook "systemctl stop apache2.service" --post-hook "systemctl start apache2.service"
-      ssl_support="\n\n<IfModule mod_ssl.c>\n\n<VirtualHost _default_:443>\nServerName $domain\nServerAlias $domain_alias\n\nDocumentRoot /var/www/$domain/public_html\n\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined\n\nSSLEngine on\n\nSSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem\nSSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem\n\n$fastcgi_ssl</VirtualHost>\n</IfModule>"
+      ssl_support=$(cat <<EOF
+<IfModule mod_ssl.c>
+  <VirtualHost _default_:443>
+    ServerName $domain
+    ServerAlias $domain_alias
+    DocumentRoot /var/www/$domain/public_html
+    ErrorLog /var/www/$domain/log/error.log
+    CustomLog /var/www/$domain/log/access.log combined
+
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/$domain/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/$domain/privkey.pem
+
+$fastcgi_ssl
+  </VirtualHost>
+</IfModule>
+EOF
+)
     fi
     printf "[${green}${icon_ok}${nocolor}] SSL Certificate created with success!\n"
-    website_url="https://$domain"
+    website_url="https://$domain/"
     break
     ;;
   "no")
@@ -427,14 +497,33 @@ sudo touch /etc/apache2/sites-available/$domain.conf
 printf "[${green}${icon_ok}${nocolor}] Apache config file created with success!\n"
 
 #create the virtual host apache file
-sudo sh -c "echo '<VirtualHost *:80>\n\nServerName $domain\nServerAlias $domain_alias\nSetEnv PATH \"/var/www/$domain/public_html\"\nDocumentRoot /var/www/$domain/public_html\nErrorLog /var/www/$domain/log/error.log\nCustomLog /var/www/$domain/log/access.log combined$fastcgi\n\n</VirtualHost>$ssl_support' >> /etc/apache2/sites-available/$domain.conf"
+redirect_to_https=""
+if [ -n "$ssl_support" ]; then
+	redirect_to_https="Redirect / $website_url"
+fi
+sudo sh -c "echo '$(cat <<EOF
+<VirtualHost *:80>
+  ServerName $domain
+  ServerAlias $domain_alias
+  SetEnv PATH "/var/www/$domain/public_html"
+  DocumentRoot /var/www/$domain/public_html
+  ErrorLog /var/www/$domain/log/error.log
+  CustomLog /var/www/$domain/log/access.log combined
+  
+  $redirect_to_https
+
+$fastcgi
+</VirtualHost>
+$ssl_support
+EOF
+)' >> /etc/apache2/sites-available/$domain.conf"
 printf "[${green}${icon_ok}${nocolor}] Virtual host created! For extra options, edit this file: /etc/apache2/sites-enabled/$domain.conf\n"
 
 #Enable the site
-sudo a2ensite $domain.conf >/dev/null 2>&1
+sudo a2ensite $domain.conf > /dev/null 2>&1
 
 #restart apache
-sudo service apache2 restart >/dev/null 2>&1
+sudo service apache2 restart > /dev/null 2>&1
 printf "[${green}${icon_ok}${nocolor}] Apache reloaded!\n"
 
 #if exists fail2ban reload
