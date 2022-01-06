@@ -114,13 +114,13 @@ if [ -n "$server_alias_with_comma" ]; then
 fi
 
 #full path of website
-path="$(pwd)/"$*
+path="$(pwd)/${domain}/"
 
 #default file directory
 public_dir="public_html"
 #if user type custom public directory, use this.
 if [ -n "$custom_public_dir" ]; then
-	public_dir=$custom_public_dir
+	public_dir=${custom_public_dir%/}
 fi
 
 #environment type
@@ -401,13 +401,13 @@ fi
 #go into directory
 cd $path
 
-#check the log directory
+#check the log directory and create if not exists
 if [ ! -d "$path"log ]; then
   mkdir "$path"log
   printf "[${green}${icon_ok}${nocolor}] Log directory created.\n"
 fi
 
-# check the public_dir
+# check the public_dir and create if not exists
 if [ ! -d "${path}${public_dir}" ]; then
   mkdir -p "${path}${public_dir}"
   printf "[${green}${icon_ok}${nocolor}] $public_dir directory created.\n"
@@ -511,9 +511,9 @@ EOF
 done
 
 #set the directory permissions
-sudo chown -R www-data:www-data $path
-sudo chmod -R g+w $path
-printf "[${green}${icon_ok}${nocolor}] Permissions setted!\n"
+sudo chown -R www-data:www-data ${path}${public_dir}
+sudo chmod -R g+w ${path}${public_dir}
+printf "[${green}${icon_ok}${nocolor}] Permissions setted to public directory!\n"
 
 #create the symbolic link to www
 sudo ln -s $(readlink -f "$path") /var/www/$domain
