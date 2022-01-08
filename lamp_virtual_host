@@ -277,7 +277,7 @@ if [ "$action_type" = "delete" ]; then
 	#delete mkcert certificates
 	if [ "development" == "$environment_type" ]; then
 		cd $path
-		rm *.pem
+		rm ${domain}*.pem
 		printf "[${green}${icon_ok}${nocolor}] mkcert certificates deleted.\n"
 	fi
 
@@ -523,8 +523,8 @@ select action in "${actions[@]}"; do
       mkcert $hosts_domain >/dev/null 2>&1
 			
 			#check the .pem filenames (sometimes mkcert create file with ...+1.pem
-			certificate_file=$(basename $(find $path -name "*.pem" -not -name "*-key.pem"))
-			certificate_keyfile=$(basename $(find $path -name "*-key.pem"))
+			certificate_file=$(basename $(find $path -name "${domain}*.pem" -not -name "*${domain}-key.pem"))
+			certificate_keyfile=$(basename $(find $path -name "${domain}*-key.pem"))
 			
 			ssl_support=$(cat <<EOF
 <IfModule mod_ssl.c>
