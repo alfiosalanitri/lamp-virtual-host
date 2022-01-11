@@ -213,13 +213,13 @@ select action in "${actions[@]}"; do
     read -p "Type the database name: " database_name
     database_name=${database_name}
 
-    read -p "Type the database user: " database_user
+    read -p "Type the super admin username: " database_user
     database_user=${database_user}
 
-    read -sp "Type the database password: " database_password
+    read -sp "Type the super admin password: " database_password
     database_password=${database_password}
 
-    sql="create database if not exists $database_name"
+    sql="create database if not exists $database_name;"
     if [ "$action_type" == "delete" ]; then
       sql="drop database $database_name;"
     fi
@@ -248,6 +248,71 @@ select action in "${actions[@]}"; do
         printf "[${red}${icon_ko}${nocolor}] Error, database not created. Now...\n"
       fi
     fi
+
+		#create/delete database user
+		echo ""
+		printf "${yellow}${icon_wait}${nocolor} Do you want to ${green}$action_type${nocolor} an user for database: ${yellow}$database_name${nocolor}?\n"
+		echo ""
+		PS3="Type 1 or 2: "
+		actions=("Yes" "No")
+		select action in "${actions[@]}"; do
+  		case $action in
+  			"Yes")
+
+    			read -p "Type a name for the user: " database_user_name
+    			database_user_name=${database_user_name}
+
+    			if [ "$action_type" == "delete" ]; then
+      			sql="drop user '$database_user_name'@'localhost';"
+    			else
+						read -sp "Type a strong password for this user: " database_user_password
+    				database_user_password=${database_user_password}
+    				sql="create user '$database_user_name'@'localhost' identified with mysql_native_password by '$database_user_password';"
+					fi
+
+    			printf "\nMysql log start: ----------------------------------------------------------------\n"
+    			#create/delete the user
+   				if ! mysql -u$database_user -p$database_password -e "$sql"; then
+      			printf "Mysql log end: ----------------------------------------------------------\n"
+      			printf "[${red}${icon_ko}${nocolor}] Database user errors. Solve this log errors messages.\n"
+      			exit 1
+    			fi
+
+    			#check if the user exists
+    			database_user_check=$(mysql -u$database_user -p$database_password -e "select user from mysql.user;" | grep -Fo $database_user_name)
+    			printf "Mysql log end: ------------------------------------------------------------------\n"
+    			if [ "$action_type" == "delete" ]; then
+      			if [ "$database_user_check" != "$database_user_name" ]; then
+        			printf "[${green}${icon_ok}${nocolor}] Good, database user deleted with success. Now...\n"
+      			else
+        			printf "[${red}${icon_ko}${nocolor}] Error, database user not deleted. Now...\n"
+      			fi
+    			else
+      			if [ "$database_user_check" == "$database_user_name" ]; then
+        			printf "[${green}${icon_ok}${nocolor}] Good, database user created with success. Now...\n"
+							#grant the privileges to database
+							printf "\nMysql log start: ----------------------------------------------------------------\n"
+							if ! mysql -u$database_user -p$database_password -e "Grant all privileges on $database_name.* to '$database_user_name'@'localhost';"; then
+								printf "\nMysql log end: ----------------------------------------------------------------\n"
+								printf "[${red}${icon_ko}${nocolor}] Failed granting privileges."
+								exit 1
+							fi
+							printf "\nMysql log end: ----------------------------------------------------------------\n"
+							#flush privileges
+							mysql -u$database_user -p$database_password -e "flush privileges;"
+      				printf "[${green}${icon_ok}${nocolor}] Privileges granted. Now...\n"
+						else
+        			printf "[${red}${icon_ko}${nocolor}] Error, database user not created. Now...\n"
+      			fi
+    			fi
+    			break
+    			;;
+  			"No")
+    			break
+    			;;
+  			*) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
+  		esac
+		done
     break
     ;;
   "No")
@@ -443,9 +508,9 @@ select action in "${actions[@]}"; do
 		#download wordpress
 		wordpress_archive="latest-it_IT.tar.gz"
 		wordpress_url="https://it.wordpress.org/$wordpress_archive"
-		printf "[${yellow}${icon_wait}${nocolor}] downloading wordpress...\n"
+		printf "[${yellow}${icon_wait}${nocolor}] Fetching wordpress...\n"
 		wget -O "$wordpress_archive" "$wordpress_url" > /dev/null 2>&1
-  	printf "[${green}${icon_ok}${nocolor}] wordpress downloaded.\n"
+  	printf "[${green}${icon_ok}${nocolor}] Wordpress downloaded. Extracting tar archive...\n"
 		tar xf $wordpress_archive
 		rm $wordpress_archive
 		mv wordpress/* $public_dir
@@ -459,7 +524,7 @@ select action in "${actions[@]}"; do
     	exit 1;
 		else
 			#create laravel
-			printf "[${yellow}${icon_wait}${nocolor}] installing laravel...\n"
+			printf "[${yellow}${icon_wait}${nocolor}] Installing Laravel...\n"
 			composer create-project laravel/laravel webapp > /dev/null 2>&1
 			#remove public_dir and change to laravel public
 			rm -r $public_dir
