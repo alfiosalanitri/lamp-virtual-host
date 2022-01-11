@@ -588,7 +588,7 @@ select action in "${actions[@]}"; do
       mkcert $hosts_domain >/dev/null 2>&1
 			
 			#check the .pem filenames (sometimes mkcert create file with ...+1.pem
-			certificate_file=$(basename $(find $path -name "${domain}*.pem" -not -name "*${domain}-key.pem"))
+			certificate_file=$(basename $(find $path -name "${domain}*.pem" -not -name "${domain}*-key.pem"))
 			certificate_keyfile=$(basename $(find $path -name "${domain}*-key.pem"))
 			
 			ssl_support=$(cat <<EOF
