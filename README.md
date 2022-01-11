@@ -3,12 +3,12 @@
 ssl certificate*
 
 # DESCRIPTION
-With lamp_virtual_host bash script you can add or delete an apache virtual host to/from your lamp stack. You can also to add a database and choose one of yours fast-cgi php module if installed.
+With lamp_virtual_host bash script you can add/delete an apache virtual host to/from your LAMP stack. You can also to add a database with custom user associated and choose one of yours fast-cgi php module if installed.
 
 If you choose development environment option, the script will add the ssl certificate with mkcert package if installed on your machine.
-If you choose production environment, the script will add the ssl certificate with certbot and let's encrypt. Note that this step requires the dns for domain and aliases setted to your server ip address.
+If you choose production environment, the script will add the ssl certificate with certbot and let's encrypt. Note that this step requires the dns for domain and aliases setted to your server ip address before run the script.
 
-Also you can choose if auto install wordpress or laravel application in your virtual host.
+You can also choose if auto install Wordpress or Laravel application in your virtual host. (see demo gif)
 
 # INSTALLATION
 `sudo mv lamp_virtual_host /usr/local/bin`
@@ -19,10 +19,11 @@ Also you can choose if auto install wordpress or laravel application in your vir
 ![usage](./demo-usage.gif)
 
 # REQUIREMENTS
-- A debian linux distribution like Ubuntu or Debian
+- Debian Linux distribution like Ubuntu or Debian
 - Stack Lamp: Apache, Mysql (optional), Php
 - php-fpm module (optional)
 - mkcert or certbot for ssl certificate (optional)
+- wget, tar and composer for application installation (optional)
        
 # AUTHOR: 
 lamp_virtual_host is written by Alfio Salanitri www.alfiosalanitri.it and are licensed under the terms of the GNU General Public License, version 2 or higher. 
