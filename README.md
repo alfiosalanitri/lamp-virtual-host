@@ -16,7 +16,6 @@ Also you can choose if auto install wordpress or laravel application in your vir
 `sudo chmod +x /usr/local/bin/lamp_virtual_host`
 
 # USAGE
-## Create the virtual host
 ![usage](./demo-usage.gif)
 
 # REQUIREMENTS
