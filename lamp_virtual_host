@@ -48,10 +48,11 @@ EOF
 get_user_ini() {
 cat << EOF
 max_execution_time=3000
-upload_max_filesize=100M
+upload_max_filesize=150M
 max_input_time=3000
-post_max_size=100M
+post_max_size=256M
 memory_limit=256M
+max_input_vars=5000
 EOF
 }
 #############################################################
