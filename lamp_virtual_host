@@ -42,7 +42,18 @@ Script Usage:
 $(basename $0) [-h] [-a www.example.com,shop.example.com] [-d filedir] /some/path/www.example.com
 EOF
 } 
-
+#############################################################
+# Functions
+#############################################################
+get_user_ini() {
+cat << EOF
+max_execution_time=3000
+upload_max_filesize=100M
+max_input_time=3000
+post_max_size=100M
+memory_limit=256M
+EOF
+}
 #############################################################
 # Check Dependencies
 #############################################################
@@ -515,6 +526,7 @@ select action in "${actions[@]}"; do
 		rm $wordpress_archive
 		mv wordpress/* $public_dir
 		rm -r wordpress
+		get_user_ini > $public_dir/.user.ini	
 		printf "[${green}${icon_ok}${nocolor}] Wordpress ready to install!\n"
     break
     ;;
@@ -529,6 +541,7 @@ select action in "${actions[@]}"; do
 			#remove public_dir and change to laravel public
 			rm -r $public_dir
 			public_dir="webapp/public"
+			get_user_ini > ${path}${public_dir}/.user.ini
 			#set correct permissions
 			sudo chown -R $USER:www-data "${path}webapp"
 			sudo chmod -R ug+w "${path}webapp/storage"
@@ -548,6 +561,7 @@ done
 if [ -z "$(ls -A "${path}${public_dir}")" ]; then
   #create an index file
   echo "<?php phpinfo();" >> "${path}${public_dir}/index.php"
+					get_user_ini > ${path}${public_dir}/.user.ini
 fi
 
 #############################################################
