@@ -24,6 +24,11 @@ You can also choose if auto install Wordpress or Laravel application in your vir
 - php-fpm module (optional)
 - mkcert or certbot for ssl certificate (optional)
 - wget, tar, unzip and composer for application installation (optional)
+
+# Applications which may be installed
+- Wordpress
+- Prestashop
+- Laravel
        
 # AUTHOR: 
 lamp_virtual_host is written by Alfio Salanitri www.alfiosalanitri.it and are licensed under the terms of the GNU General Public License, version 2 or higher. 
