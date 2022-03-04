@@ -55,6 +55,13 @@ memory_limit=256M
 max_input_vars=5000
 EOF
 }
+check_required_package() {
+  #check if given package is installed 
+  if ! command -v $1 &> /dev/null; then
+   	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}${1}${nocolor} is required. Install it with apt install $1.\n"
+   	exit 1;
+  fi
+}
 #############################################################
 # Check Dependencies
 #############################################################
@@ -216,10 +223,7 @@ select action in "${actions[@]}"; do
   case $action in
   "Yes")
     # Check if exists
-    if ! command -v mysql &>/dev/null; then
-      printf "${red}${icon_ko}${nocolor} Sorry, but ${green}mysql${nocolor} is required.\n"
-      exit 1
-    fi
+    check_required_package mysql
 
     #ok mysql is installed
     read -p "Type the database name: " database_name
@@ -502,25 +506,18 @@ sudo printf "${yellow}${icon_wait}${nocolor} Do you want to install an Applicati
 echo ""
 ssl_support=''
 PS3="Type the number with your choise: "
-actions=("Wordpress" "Laravel" "No")
+actions=("Wordpress" "Prestashop" "Laravel" "No")
 select action in "${actions[@]}"; do
   case $action in
   "Wordpress")
-   
-		#check wget,tar package 
-		if ! command -v wget &> /dev/null; then
-    	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}wget${nocolor} is required. Install it with apt install wget.\n"
-    	exit 1;
-  	fi
-		if ! command -v tar &> /dev/null; then
-    	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}tar${nocolor} is required. Install it with apt install tar.\n"
-    	exit 1;
-  	fi
-	
+    
+    check_required_package wget
+    check_required_package tar
+
 		#download wordpress
 		wordpress_archive="latest-it_IT.tar.gz"
 		wordpress_url="https://it.wordpress.org/$wordpress_archive"
-		printf "[${yellow}${icon_wait}${nocolor}] Fetching wordpress...\n"
+		printf "[${yellow}${icon_wait}${nocolor}] Fetching Wordpress...\n"
 		wget -O "$wordpress_archive" "$wordpress_url" > /dev/null 2>&1
   	printf "[${green}${icon_ok}${nocolor}] Wordpress downloaded. Extracting tar archive...\n"
 		tar xf $wordpress_archive
@@ -531,24 +528,39 @@ select action in "${actions[@]}"; do
 		printf "[${green}${icon_ok}${nocolor}] Wordpress ready to install!\n"
     break
     ;;
+  "Prestashop")
+    
+    check_required_package wget
+    check_required_package unzip
+
+    latest_prestashop_v=$(wget -q -O - "https://api.github.com/repos/prestashop/prestashop/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    prestashop_archive="prestashop_${latest_prestashop_v}.zip"
+    prestashop_url="https://download.prestashop.com/download/releases/$prestashop_archive"
+    printf "[${yellow}${icon_wait}${nocolor}] Fetching Prestashop...\n"
+    wget -O "$prestashop_archive" "$prestashop_url" > /dev/null 2>&1
+  	printf "[${green}${icon_ok}${nocolor}] Prestashop downloaded. Extracting zip archive...\n"
+		unzip $prestashop_archive -d $public_dir > /dev/null 2>&1
+    rm $prestashop_archive
+		get_user_ini > $public_dir/.user.ini	
+		printf "[${green}${icon_ok}${nocolor}] Prestashop ready to install!\n"
+    break
+    ;;
 	"Laravel")
-		if ! command -v composer &> /dev/null; then
-			printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}composer${nocolor} is required. Install it with: https://getcomposer.org/download/\n"
-    	exit 1;
-		else
-			#create laravel
-			printf "[${yellow}${icon_wait}${nocolor}] Installing Laravel...\n"
-			composer create-project laravel/laravel webapp > /dev/null 2>&1
-			#remove public_dir and change to laravel public
-			rm -r $public_dir
-			public_dir="webapp/public"
-			get_user_ini > ${path}${public_dir}/.user.ini
-			#set correct permissions
-			sudo chown -R $USER:www-data "${path}webapp"
-			sudo chmod -R ug+w "${path}webapp/storage"
-			printf "[${green}${icon_ok}${nocolor}] Laravel installed!\n"
-		fi
 		
+    check_required_package composer
+		
+    #create laravel
+		printf "[${yellow}${icon_wait}${nocolor}] Installing Laravel...\n"
+		composer create-project laravel/laravel webapp > /dev/null 2>&1
+		#remove public_dir and change to laravel public
+		rm -r $public_dir
+		public_dir="webapp/public"
+		get_user_ini > ${path}${public_dir}/.user.ini
+		#set correct permissions
+		sudo chown -R $USER:www-data "${path}webapp"
+		sudo chmod -R ug+w "${path}webapp/storage"
+		printf "[${green}${icon_ok}${nocolor}] Laravel installed!\n"
+				
 		break
 		;;
   "No")
@@ -587,10 +599,7 @@ select action in "${actions[@]}"; do
       cert_package="certbot"
     fi
 
-    if ! command -v $cert_package &>/dev/null; then
-      printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}$cert_package${nocolor} is required. Install it before!\n"
-      exit 1
-    fi
+    check_required_package $cert_package
 
     # check if ssl mod is enabled
     if [ ! -f "/etc/apache2/mods-enabled/ssl.load" ]; then
