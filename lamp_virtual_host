@@ -534,8 +534,26 @@ select action in "${actions[@]}"; do
     check_required_package unzip
 
     latest_prestashop_v=$(wget -q -O - "https://api.github.com/repos/prestashop/prestashop/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    prestashop_archive="prestashop_${latest_prestashop_v}.zip"
-    prestashop_url="https://download.prestashop.com/download/releases/$prestashop_archive"
+    
+    #choose between production or development prestashop version
+    printf "${yellow}${icon_wait}${nocolor} Which Prestashop version do you want?"
+    PS3="Type the number with your choise: "
+    prestashop_versions=("Development" "Production")
+    select prestashop_version in "${prestashop_versions[@]}"; do
+      case $prestashop_version in
+        "Development")
+          prestashop_archive="${latest_prestashop_v}.zip"
+          prestashop_url="https://github.com/PrestaShop/PrestaShop/archive/refs/tags/$prestashop_archive"
+          break
+          ;;
+        "Production")
+          prestashop_archive="prestashop_${latest_prestashop_v}.zip"
+          prestashop_url="https://download.prestashop.com/download/releases/$prestashop_archive"
+          break
+          ;;
+        *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
+      esac
+    done
     printf "[${yellow}${icon_wait}${nocolor}] Fetching Prestashop...\n"
     wget -O "$prestashop_archive" "$prestashop_url" > /dev/null 2>&1
   	printf "[${green}${icon_ok}${nocolor}] Prestashop downloaded. Extracting zip archive...\n"
