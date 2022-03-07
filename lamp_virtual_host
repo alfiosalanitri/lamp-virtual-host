@@ -536,7 +536,7 @@ select action in "${actions[@]}"; do
     latest_prestashop_v=$(wget -q -O - "https://api.github.com/repos/prestashop/prestashop/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     
     #choose between production or development prestashop version
-    printf "${yellow}${icon_wait}${nocolor} Which Prestashop version do you want?"
+    printf "${yellow}${icon_wait}${nocolor} Which Prestashop version do you want?\n"
     PS3="Type the number with your choise: "
     prestashop_versions=("Development" "Production")
     select prestashop_version in "${prestashop_versions[@]}"; do
