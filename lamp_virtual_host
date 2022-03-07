@@ -559,8 +559,16 @@ select action in "${actions[@]}"; do
   	printf "[${green}${icon_ok}${nocolor}] Prestashop downloaded. Extracting zip archive...\n"
 		unzip $prestashop_archive -d $public_dir > /dev/null 2>&1
     rm $prestashop_archive
+    #the development archive include main directory PrestaShop-xxx, unzip extraction leave this dir inside public_dir
+    #fix this problem moving main directory to path, remove old public_dir and rename Prestashop-xxx to public_dir
+    if [ "${latest_prestashop_v}.zip" == "$prestashop_archive" ]; then
+     mv "${public_dir}/PrestaShop-${latest_prestashop_v}" $path
+     rm -r $public_dir
+     mv "${path}PrestaShop-${latest_prestashop_v}" "${path}$public_dir"
+    fi
 		get_user_ini > $public_dir/.user.ini	
-		printf "[${green}${icon_ok}${nocolor}] Prestashop ready to install!\n"
+		sudo chmod -R ug+w $public_dir
+    printf "[${green}${icon_ok}${nocolor}] Prestashop ready to install!\n"
     break
     ;;
 	"Laravel")
