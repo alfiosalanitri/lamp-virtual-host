@@ -535,15 +535,41 @@ select action in "${actions[@]}"; do
     check_required_package unzip
 
     latest_prestashop_v=$(wget -q -O - "https://api.github.com/repos/prestashop/prestashop/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    prestashop_archive="prestashop_${latest_prestashop_v}.zip"
-    prestashop_url="https://download.prestashop.com/download/releases/$prestashop_archive"
+    
+    #choose between production or development prestashop version
+    printf "${yellow}${icon_wait}${nocolor} Which Prestashop version do you want?\n"
+    PS3="Type the number with your choise: "
+    prestashop_versions=("Development" "Production")
+    select prestashop_version in "${prestashop_versions[@]}"; do
+      case $prestashop_version in
+        "Development")
+          prestashop_archive="${latest_prestashop_v}.zip"
+          prestashop_url="https://github.com/PrestaShop/PrestaShop/archive/refs/tags/$prestashop_archive"
+          break
+          ;;
+        "Production")
+          prestashop_archive="prestashop_${latest_prestashop_v}.zip"
+          prestashop_url="https://download.prestashop.com/download/releases/$prestashop_archive"
+          break
+          ;;
+        *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
+      esac
+    done
     printf "[${yellow}${icon_wait}${nocolor}] Fetching Prestashop...\n"
     wget -O "$prestashop_archive" "$prestashop_url" > /dev/null 2>&1
   	printf "[${green}${icon_ok}${nocolor}] Prestashop downloaded. Extracting zip archive...\n"
 		unzip $prestashop_archive -d $public_dir > /dev/null 2>&1
     rm $prestashop_archive
+    #the development archive include main directory PrestaShop-xxx, unzip extraction leave this dir inside public_dir
+    #fix this problem moving main directory to path, remove old public_dir and rename Prestashop-xxx to public_dir
+    if [ "${latest_prestashop_v}.zip" == "$prestashop_archive" ]; then
+     mv "${public_dir}/PrestaShop-${latest_prestashop_v}" $path
+     rm -r $public_dir
+     mv "${path}PrestaShop-${latest_prestashop_v}" "${path}$public_dir"
+    fi
 		get_user_ini > $public_dir/.user.ini	
-		printf "[${green}${icon_ok}${nocolor}] Prestashop ready to install!\n"
+		sudo chmod -R ug+w $public_dir
+    printf "[${green}${icon_ok}${nocolor}] Prestashop ready to install!\n"
     break
     ;;
 	"Laravel")
