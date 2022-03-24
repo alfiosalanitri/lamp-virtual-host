@@ -749,4 +749,4 @@ printf "[${green}${icon_ok}${nocolor}] Website added to /etc/hosts!\n\n\n"
 #print the final message
 printf "[${green}${icon_rocket}${nocolor}] The Force will be with you. Always. Virtual host created. Go to $website_url\n"
 
-exit 1
+exit 0
