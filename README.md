@@ -21,10 +21,10 @@ You can also choose if auto install Wordpress or Laravel application in your vir
 
 # REQUIREMENTS
 - Debian Linux distribution like Ubuntu or Debian
-- Stack Lamp: Apache, Mysql (optional), Php
+- Stack Lamp: Apache (required), Php (required), Mysql (optional)
 - php-fpm module (optional)
-- mkcert or certbot for ssl certificate (optional)
-- wget, tar, unzip and composer for application installation (optional)
+- [mkcert](https://github.com/FiloSottile/mkcert#linux) for development stage or [certbot](https://certbot.eff.org/) for production stage, to activate the ssl certificate (optional)
+- wget, tar, unzip and [composer](https://getcomposer.org/) for application installation (optional)
 
 # Applications which may be installed
 - Wordpress
