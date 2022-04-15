@@ -11,10 +11,10 @@ If you choose production environment, the script will add the ssl certificate wi
 You can also choose if auto install Wordpress or Laravel application in your virtual host. (see demo gif)
 
 # INSTALLATION
-`cd /home/your-user/your-directory`
-`git clone https://github.com/alfiosalanitri/lamp-virtual-host.git`
-`sudo chmod +x /home/your-user/your-directory/lamp-virtual-host/lamp_virtual_host`
-`sudo ln -s /home/your-user/your-directory/lamp-virtual-host/lamp_virtual_host /usr/local/bin/lamp_virtual_host`
+- `cd /home/your-user/your-directory`
+- `git clone https://github.com/alfiosalanitri/lamp-virtual-host.git`
+- `sudo chmod +x /home/your-user/your-directory/lamp-virtual-host/lamp_virtual_host`
+- `sudo ln -s /home/your-user/your-directory/lamp-virtual-host/lamp_virtual_host /usr/local/bin/lamp_virtual_host`
 
 # USAGE
 ![usage](./demo-usage.gif)
