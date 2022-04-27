@@ -72,7 +72,7 @@ check_required_package() {
 # Check OS
 #############################################################
 if [ -f /etc/redhat-release ]; then
-  printf "RUN Update\n"
+  printf "[${red}${icon_ko}${nocolor}] RUN Update\n"
   sudo yum update
   
 fi
@@ -87,14 +87,14 @@ fi
 # Check Apache
 if [ ! -d /etc/apache2 ]; then
   printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}/etc/apache2${nocolor} is required.\n"
-  printf "Install Apache2"
+  printf "I install Apache2"
   sudo apt-get install apache2
   exit 1
 fi
 # Check php
 if [ -z "$(ls -A "/etc/php")" ]; then
   printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}/etc/php${nocolor} is required.\n"
-  printf "Install PHP"
+  printf "I install PHP"
   sudo apt-get install php7.4
   exit 1
 fi
