@@ -63,6 +63,23 @@ check_required_package() {
    	exit 1;
   fi
 }
+create_fastcgi_pool () {
+  #copy the www.conf pool file and change [www] and listen address
+  fcgi_php_v=$1
+  fcgi_pool_name=$2
+  fcgi_config_file=/etc/php/$fcgi_php_v/fpm/pool.d/$fcgi_pool_name.conf
+  if [ ! -f "/etc/php/$fcgi_php_v/fpm/pool.d/www.conf" ]; then
+    printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}/etc/php/$fcgi_php_v/fpm/pool.d/www.conf${nocolor} config file doesn't exists.\n"
+   	exit 1;
+  fi
+	sudo cp /etc/php/$fcgi_php_v/fpm/pool.d/www.conf $fcgi_config_file
+	sudo sed -i "s/\[www\]/\[$fcgi_pool_name\]/g" $fcgi_config_file
+	pool_address_from="listen = $(sudo awk -F'= ' '/^listen = / { print $2}' $fcgi_config_file)"
+	pool_address_to=$(sudo echo $pool_address_from | sed -e "s/-fpm.sock/-$fcgi_pool_name-fpm.sock/g")
+	sudo sed -i "s|$pool_address_from|$pool_address_to|" $fcgi_config_file
+	#reload service
+	sudo systemctl restart php${fcgi_php_v}-fpm.service
+}
 #############################################################
 # Check Dependencies
 #############################################################
@@ -152,6 +169,7 @@ action_type=""
 #php fastcgi
 fastcgi=""
 fastcgi_ssl=""
+fastcgi_pool_name=$(echo $domain | sed -E 's/\.//gm;t;d')
 
 #############################################################
 # User choises
@@ -362,6 +380,15 @@ if [ "$action_type" = "delete" ]; then
 		rm ${domain}*.pem
 		printf "[${green}${icon_ok}${nocolor}] mkcert certificates deleted.\n"
 	fi
+	
+	#delete the fpm pool config file if exists
+	fpm_php_version=$(sudo awk '/proxy:unix:/ { print $2}' /etc/apache2/sites-enabled/$domain.conf | grep -o '[0-9].[0-9]\+' | tail -n 1)
+	if [ -f "/etc/php/$fpm_php_version/fpm/pool.d/$fastcgi_pool_name.conf" ]; then
+		sudo rm /etc/php/$fpm_php_version/fpm/pool.d/$fastcgi_pool_name.conf
+		printf "[${green}${icon_ok}${nocolor}] FastCGI pool config file deleted\n"
+		sudo systemctl restart php${fpm_php_version}-fpm.service > /dev/null 2>&1
+  	printf "[${green}${icon_ok}${nocolor}] php${fpm_php_version}-fpm.service reloaded!\n"
+	fi 
 
   #disable the apache site
   sudo rm /etc/apache2/sites-available/$domain.conf
@@ -430,11 +457,15 @@ select action in "${actions[@]}"; do
         #config for apache fcgid module (in debian)
         fastcgi=$(cat <<EOF
   <FilesMatch \.php$>
-    SetHandler "proxy:unix:/run/php/php${php_version}-fpm.sock|fcgi://localhost"
+    SetHandler "proxy:unix:/run/php/php${php_version}-${fastcgi_pool_name}-fpm.sock|fcgi://localhost"
   </FilesMatch>
 EOF
 )
         fastcgi_ssl=$fastcgi
+        
+        #create the fpm pool config file for this website
+        create_fastcgi_pool $php_version $fastcgi_pool_name
+        
       elif [ -n "$(sudo ls /etc/apache2/mods-enabled/ | grep fastcgi.conf)" ]; then
         #config for fastcgi (in ubuntu)
         fastcgi=$(cat <<EOF
