@@ -37,10 +37,19 @@ icon_rocket='\xF0\x9F\x9A\x80'
 #############################################################
 display_help() {
 cat << EOF
+Copyright (C) 2022 by Alfio Salanitri
+Website: https://github.com/alfiosalanitri/lamp-virtual-host
 
-Script Usage:
+Usage: $(basename $0) -a www.example.com,shop.example.com -d public /path/to/www.example.com
 
-$(basename $0) [-h] [-a www.example.com,shop.example.com] [-d filedir] /some/path/www.example.com
+Options
+-a
+  One or more aliases (optional)
+-d
+  Custom directory with public files (optional) (default public_html)
+-h
+  show this help
+    
 EOF
 } 
 #############################################################
