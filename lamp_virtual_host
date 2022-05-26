@@ -116,7 +116,7 @@ while getopts 'ha:d:' option; do
 		a)
   		server_alias_with_comma=$OPTARG
 			#replace comma with space
-			server_alias_with_space="$(echo $OPTARG | sed -e 's/,/ /')"
+			server_alias_with_space="$(echo $OPTARG | sed -e 's/,/ /gm;t;d')"
 			;;
 		d)
 			custom_public_dir=$OPTARG
