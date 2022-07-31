@@ -115,8 +115,12 @@ while getopts 'ha:d:' option; do
 			;;			
 		a)
   		server_alias_with_comma=$OPTARG
-			#replace comma with space
-			server_alias_with_space="$(echo $OPTARG | sed -e 's/,/ /gm;t;d')"
+			#replace comma with space if it exist
+      if [[ "$server_alias_with_comma" =~ .*"," ]]; then
+        server_alias_with_space="$(echo $server_alias_with_comma | sed -e 's/,/ /gm;t;d')"
+      else
+        server_alias_with_space=$server_alias_with_comma
+      fi
 			;;
 		d)
 			custom_public_dir=$OPTARG
@@ -128,7 +132,6 @@ while getopts 'ha:d:' option; do
 	esac
 done
 shift "$(($OPTIND -1))"
-
 
 #check if the last args is a valid directory
 if [ ! -d "$*" ]; then
