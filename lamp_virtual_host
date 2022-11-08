@@ -55,6 +55,7 @@ EOF
 #############################################################
 # Functions
 #############################################################
+# return .user.ini config variables
 get_user_ini() {
 cat << EOF
 max_execution_time=3000
@@ -65,13 +66,16 @@ memory_limit=256M
 max_input_vars=5000
 EOF
 }
+
+# check if given package is installed 
 check_required_package() {
-  #check if given package is installed 
   if ! command -v $1 &> /dev/null; then
    	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}${1}${nocolor} is required. Install it with apt install $1.\n"
    	exit 1;
   fi
 }
+
+# create a fastcgi pool for domain
 create_fastcgi_pool () {
   #copy the www.conf pool file and change [www] and listen address
   fcgi_php_v=$1
@@ -88,6 +92,11 @@ create_fastcgi_pool () {
 	sudo sed -i "s|$pool_address_from|$pool_address_to|" $fcgi_config_file
 	#reload service
 	sudo systemctl restart php${fcgi_php_v}-fpm.service
+}
+
+# return the http status code of an url
+get_http_status_code() {
+  wget -NS $1 2>&1 | grep "HTTP/" | tail -n 1 |  awk '{print $2}'
 }
 #############################################################
 # Check Dependencies
@@ -582,38 +591,87 @@ select action in "${actions[@]}"; do
     check_required_package wget
     check_required_package unzip
 
-    latest_prestashop_v=$(wget -q -O - "https://api.github.com/repos/prestashop/prestashop/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    
+    # user can download latest prestashop release or choose a custom release
+    prestashop_release_to_fetch=$(wget -q -O - "https://api.github.com/repos/prestashop/prestashop/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    printf "${yellow}${icon_wait}${nocolor} Which Prestashop release do you want?\n"
+    PS3="Type the number with your choise: "
+    prestashop_which_release=("Latest" "Custom")
+    select prestashop_which_release_choosed in "${prestashop_which_release[@]}"; do
+      case $prestashop_which_release_choosed in
+        "Custom")
+          prestashop_releases=$(wget -q -O - "https://api.github.com/repos/prestashop/prestashop/releases" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          readarray -t prestashop_all_releases <<< $prestashop_releases
+          PS3="Type the number with your choise: "
+          select prestashop_release in "${prestashop_all_releases[@]}"; do
+            if ! [ "$REPLY" -eq "$REPLY" ] 2>/dev/null; then
+              printf "[${red}${icon_ko}${nocolor}] $REPLY must be an integear. Try again\n"
+              exit 1
+            fi
+            if [ $REPLY -eq 0 ] || [ $REPLY -gt ${#prestashop_all_releases[@]} ]; then
+              printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n"
+              exit 1
+            fi
+            prestashop_release_to_fetch=$prestashop_release
+            printf "[${green}${icon_ok}${nocolor}] Good, Prestashop release $prestashop_release_to_fetch will be installed.\n"
+            break
+          done
+          break
+          ;;
+        "Latest")
+          printf "[${green}${icon_ok}${nocolor}] Good, Prestashop release $prestashop_release_to_fetch will be installed.\n"
+          break
+          ;;
+        *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
+      esac
+    done
+
     #choose between production or development prestashop version
+    prestashop_git_archive="${prestashop_release_to_fetch}.zip"
+    prestashop_git_url="https://github.com/PrestaShop/PrestaShop/archive/refs/tags/$prestashop_git_archive"
+
     printf "${yellow}${icon_wait}${nocolor} Which Prestashop version do you want?\n"
     PS3="Type the number with your choise: "
     prestashop_versions=("Development" "Production")
     select prestashop_version in "${prestashop_versions[@]}"; do
       case $prestashop_version in
         "Development")
-          prestashop_archive="${latest_prestashop_v}.zip"
-          prestashop_url="https://github.com/PrestaShop/PrestaShop/archive/refs/tags/$prestashop_archive"
+          prestashop_archive=$prestashop_git_archive
+          prestashop_url=$prestashop_git_url
           break
           ;;
         "Production")
-          prestashop_archive="prestashop_${latest_prestashop_v}.zip"
-          prestashop_url="https://download.prestashop.com/download/releases/$prestashop_archive"
+          prestashop_archive="prestashop_${prestashop_release_to_fetch}.zip"
+          prestashop_url="https://www.prestashop.com/it/system/files/ps_releases/$prestashop_archive"
           break
           ;;
         *) printf "[${red}${icon_ko}${nocolor}] $REPLY isn't a valid option. Try again\n" ;;
       esac
     done
-    printf "[${yellow}${icon_wait}${nocolor}] Fetching Prestashop...\n"
+
+    # validate archive zip download link
+    prestashop_url_status_code=$(get_http_status_code $prestashop_url)
+    if [ $prestashop_url_status_code -ne 200 ]; then
+      printf "[${yellow}${icon_wait}${nocolor}] Sorry but $prestashop_url return the status code $prestashop_url_status_code. I will try to download from github.\n"
+      prestashop_archive=$prestashop_git_archive
+      prestashop_url=$prestashop_git_url
+      prestashop_url_status_code=$(get_http_status_code $prestashop_url)
+      if [ $prestashop_url_status_code -ne 200 ]; then
+        printf "[${red}${icon_ko}${nocolor}] Sorry but $prestashop_url return the status code $prestashop_url_status_code. Try with another prestashop relase or download it manually.\n"
+        exit 1
+      fi
+    fi
+
+    printf "[${yellow}${icon_wait}${nocolor}] Fetching Prestashop version $prestashop_release_to_fetch...\n"
     wget -O "$prestashop_archive" "$prestashop_url" > /dev/null 2>&1
   	printf "[${green}${icon_ok}${nocolor}] Prestashop downloaded. Extracting zip archive...\n"
 		unzip $prestashop_archive -d $public_dir > /dev/null 2>&1
     rm $prestashop_archive
     #the development archive include main directory PrestaShop-xxx, unzip extraction leave this dir inside public_dir
     #fix this problem moving main directory to path, remove old public_dir and rename Prestashop-xxx to public_dir
-    if [ "${latest_prestashop_v}.zip" == "$prestashop_archive" ]; then
-     mv "${public_dir}/PrestaShop-${latest_prestashop_v}" $path
+    if [ "${prestashop_release_to_fetch}.zip" == "$prestashop_archive" ]; then
+     mv "${public_dir}/PrestaShop-${prestashop_release_to_fetch}" $path
      rm -r $public_dir
-     mv "${path}PrestaShop-${latest_prestashop_v}" "${path}$public_dir"
+     mv "${path}PrestaShop-${prestashop_release_to_fetch}" "${path}$public_dir"
     fi
 		get_user_ini > $public_dir/.user.ini	
 		sudo chmod -R ug+w $public_dir
