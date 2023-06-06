@@ -268,12 +268,30 @@ select action in "${actions[@]}"; do
     #ok mysql is installed
     read -p "Type the database name: " database_name
     database_name=${database_name}
+    if [ "$database_name" == "" ]; then
+      printf "[${red}${icon_ko}${nocolor}] Database name is required.\n"
+      exit 1
+    fi
+  
+    read -p "Type the database host (leave empty for localhost): " database_host
+    database_host=${database_host:-localhost}
 
+    read -p "Type the database port (leave empty for 3306): " database_port
+    database_port=${database_port:-3306}
+    
     read -p "Type the super admin username: " database_user
     database_user=${database_user}
+    if [ "$database_user" == "" ]; then
+      printf "[${red}${icon_ko}${nocolor}] Database super admin username is required.\n"
+      exit 1
+    fi
 
     read -sp "Type the super admin password: " database_password
     database_password=${database_password}
+    if [ "$database_password" == "" ]; then
+      printf "[${red}${icon_ko}${nocolor}] Database super admin password is required.\n"
+      exit 1
+    fi
 
     sql="create database if not exists $database_name;"
     if [ "$action_type" == "delete" ]; then
@@ -282,14 +300,14 @@ select action in "${actions[@]}"; do
 
     printf "\nMysql log start: ----------------------------------------------------------------\n"
     #create/delete the database
-    if ! mysql -u$database_user -p$database_password -e "$sql"; then
+    if ! mysql -h $database_host -P $database_port -u$database_user -p$database_password -e "$sql"; then
       printf "Mysql log end: ----------------------------------------------------------\n"
       printf "[${red}${icon_ko}${nocolor}] Database errors. Solve this log errors messages.\n"
       exit 1
     fi
 
     #check if the database exists
-    database_check=$(mysql -u$database_user -p$database_password -e "SHOW DATABASES" | grep -Fo $database_name)
+    database_check=$(mysql -h $database_host -P $database_port -u$database_user -p$database_password -e "SHOW DATABASES" | grep -Fo $database_name)
     printf "Mysql log end: ------------------------------------------------------------------\n"
     if [ "$action_type" == "delete" ]; then
       if [ "$database_check" != "$database_name" ]; then
@@ -319,28 +337,28 @@ select action in "${actions[@]}"; do
     			database_user_name=${database_user_name}
 
     			if [ "$action_type" == "delete" ]; then
-      			sql="drop user '$database_user_name'@'localhost';"
+      			sql="drop user '$database_user_name'@'$database_host';"
     			else
 						read -sp "Type a strong password for this user: " database_user_password
     				database_user_password=${database_user_password}
-    				sql="create user '$database_user_name'@'localhost' identified with mysql_native_password by '$database_user_password';"
+    				sql="create user '$database_user_name'@'$database_host' identified with mysql_native_password by '$database_user_password';"
             # check if mysql server is mariadb
-            mysql_server=$(mysql -u$database_user -p$database_password -e 'STATUS;' | grep Server: | awk '{print $2}')
+            mysql_server=$(mysql -h $database_host -P $database_port -u$database_user -p$database_password -e 'STATUS;' | grep Server: | awk '{print $2}')
             if [ "MariaDB" == "$mysql_server" ]; then
-              sql="create user '$database_user_name'@'localhost' identified by '$database_user_password';"
+              sql="create user '$database_user_name'@'$database_host' identified by '$database_user_password';"
             fi
           fi
 
     			printf "\nMysql log start: ----------------------------------------------------------------\n"
     			#create/delete the user
-   				if ! mysql -u$database_user -p$database_password -e "$sql"; then
+   				if ! mysql -h $database_host -P $database_port -u$database_user -p$database_password -e "$sql"; then
       			printf "Mysql log end: ----------------------------------------------------------\n"
       			printf "[${red}${icon_ko}${nocolor}] Database user errors. Solve this log errors messages.\n"
       			exit 1
     			fi
 
     			#check if the user exists
-    			database_user_check=$(mysql -u$database_user -p$database_password -e "select user from mysql.user;" | grep -Fo $database_user_name)
+    			database_user_check=$(mysql -h $database_host -P $database_port -u$database_user -p$database_password -e "select user from mysql.user;" | grep -Fo $database_user_name)
     			printf "Mysql log end: ------------------------------------------------------------------\n"
     			if [ "$action_type" == "delete" ]; then
       			if [ "$database_user_check" != "$database_user_name" ]; then
@@ -353,14 +371,14 @@ select action in "${actions[@]}"; do
         			printf "[${green}${icon_ok}${nocolor}] Good, database user created with success. Now...\n"
 							#grant the privileges to database
 							printf "\nMysql log start: ----------------------------------------------------------------\n"
-							if ! mysql -u$database_user -p$database_password -e "Grant all privileges on $database_name.* to '$database_user_name'@'localhost';"; then
+							if ! mysql -h $database_host -P $database_port -u$database_user -p$database_password -e "Grant all privileges on $database_name.* to '$database_user_name'@'$database_host';"; then
 								printf "\nMysql log end: ----------------------------------------------------------------\n"
 								printf "[${red}${icon_ko}${nocolor}] Failed granting privileges."
 								exit 1
 							fi
 							printf "\nMysql log end: ----------------------------------------------------------------\n"
 							#flush privileges
-							mysql -u$database_user -p$database_password -e "flush privileges;"
+							mysql -h $database_host -P $database_port -u$database_user -p$database_password -e "flush privileges;"
       				printf "[${green}${icon_ok}${nocolor}] Privileges granted. Now...\n"
 						else
         			printf "[${red}${icon_ko}${nocolor}] Error, database user not created. Now...\n"
