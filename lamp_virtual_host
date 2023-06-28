@@ -341,12 +341,7 @@ select action in "${actions[@]}"; do
     			else
 						read -sp "Type a strong password for this user: " database_user_password
     				database_user_password=${database_user_password}
-    				sql="create user '$database_user_name'@'$database_host' identified with mysql_native_password by '$database_user_password';"
-            # check if mysql server is mariadb
-            mysql_server=$(mysql -h $database_host -P $database_port -u$database_user -p$database_password -e 'STATUS;' | grep Server: | awk '{print $2}')
-            if [ "MariaDB" == "$mysql_server" ]; then
-              sql="create user '$database_user_name'@'$database_host' identified by '$database_user_password';"
-            fi
+    				sql="create user '$database_user_name'@'$database_host' identified by '$database_user_password';"
           fi
 
     			printf "\nMysql log start: ----------------------------------------------------------------\n"
