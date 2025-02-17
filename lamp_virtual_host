@@ -856,7 +856,6 @@ printf "[${green}${icon_ok}${nocolor}] Apache reloaded!\n"
 
 #if exists fail2ban reload
 if command -v fail2ban-client &>/dev/null; then
-  sudo fail2ban-client restart
   sudo systemctl restart fail2ban.service
   printf "[${green}${icon_ok}${nocolor}] fail2ban restarted!\n\n\n"
 fi
